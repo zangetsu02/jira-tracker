@@ -1,0 +1,58 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+:root {
+    --ui-secondary-foreground: #ffffff;
+    --ui-muted: #f5f5f5;
+    --ui-bg: #fcfcfc;
+    --ui-border: #e4e4e4;
+    --ui-border-accented: #e4e4e4;
+    --ui-bg-elevated: #f5f5f5;
+    --ui-text: #0d0d0d;
+    --ui-text-muted: #737373;
+    --ui-primary: #0d0d0d;
+    --ui-radius: 0;
+    --font-sans: 'Hedvig Letters Sans', sans-serif;
+    --font-serif: 'Hedvig Letters Serif', serif;
+
+    ::selection {
+        color: #282a30;
+        background-color: #c8c8c8;
+    }
+}
+
+html,
+body {
+    font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--font-serif);
+}
+
+.dark {
+    --ui-secondary-foreground: #ffffff;
+    --ui-muted: #1d1d1d;
+    --ui-bg: #0d0d0d;
+    --ui-border: #242424;
+    --ui-border-accented: #242424;
+    --ui-bg-elevated: #1a1a1a;
+    --ui-text: #f5f5f5;
+    --ui-text-muted: #a3a3a3;
+    --ui-primary: #f5f5f5;
+
+    ::selection {
+        color: #ffffff;
+        background-color: #474747;
+    }
+}
+
+.logo {
+    color: var(--logo);
+    font-family: 'Kingslaw Free', sans-serif;
+}
