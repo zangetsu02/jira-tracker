@@ -94,10 +94,10 @@ export default defineEventHandler(async (event) => {
 
   const usecase = analysis[0].usecaseId
     ? await db
-        .select()
-        .from(usecases)
-        .where(eq(usecases.id, analysis[0].usecaseId))
-        .limit(1)
+      .select()
+      .from(usecases)
+      .where(eq(usecases.id, analysis[0].usecaseId))
+      .limit(1)
     : null
 
   const ms = await db
@@ -109,7 +109,19 @@ export default defineEventHandler(async (event) => {
   const uc = usecase?.[0]
   const msName = ms[0]?.name || 'Unknown'
 
-  const summary = directSummary || `[${msName}] Implementare UC ${uc?.code || ''}: ${uc?.title || 'Use Case'}`
+  // Build title with prefix if configured
+  let summary = directSummary
+  if (!summary) {
+    const baseTitle = `Implementare UC ${uc?.code || ''}: ${uc?.title || 'Use Case'}`
+    if (config[0].titlePrefix) {
+      // Replace placeholders in prefix: $Prefisso, $NomeMicroservizio, $TitoloIssue
+      summary = config[0].titlePrefix
+        .replace(/\$NomeMicroservizio/gi, msName)
+        .replace(/\$TitoloIssue/gi, baseTitle)
+    } else {
+      summary = `[${msName}] ${baseTitle}`
+    }
+  }
 
   const description = directDescription || `
 *Microservizio:* ${msName}
@@ -146,13 +158,13 @@ ${analysis[0].evidence || 'Nessuna evidenza'}
       description,
       issueType: 'Task',
       priority,
-      labels: labels || [msName],
+      labels: labels || (config[0].baseLabel ? [config[0].baseLabel, msName] : [msName]),
       assignee
     })
 
     await db
       .update(analysisResults)
-      .set({ jiraIssueKey: issue.key })
+      .set({ jiraIssueKey: issue.key, jiraIssueSummary: summary })
       .where(eq(analysisResults.id, analysisResultId))
 
     return {

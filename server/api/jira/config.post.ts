@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
   const db = await useDB(event)
   const body = await readBody(event)
 
-  const { url, username, password, defaultProject } = body
+  const { url, username, password, defaultProject, baseLabel, titlePrefix } = body
 
   if (!url || !username) {
     throw createError({
@@ -32,6 +32,8 @@ export default defineEventHandler(async (event) => {
         username,
         ...(password && { password }),
         defaultProject,
+        baseLabel: baseLabel || null,
+        titlePrefix: titlePrefix || null,
         updatedAt: new Date()
       })
       .where(eq(jiraConfig.userId, user.id))
@@ -50,7 +52,9 @@ export default defineEventHandler(async (event) => {
         url,
         username,
         password,
-        defaultProject
+        defaultProject,
+        baseLabel: baseLabel || null,
+        titlePrefix: titlePrefix || null
       })
   }
 

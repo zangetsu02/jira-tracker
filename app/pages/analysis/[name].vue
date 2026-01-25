@@ -462,12 +462,12 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
 
               <!-- Main Info -->
               <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="font-mono text-xs text-[var(--ui-info)]">
-                    {{ result.usecase?.code }}
-                  </span>
+                <div class="flex items-center gap-2">
+                  <p class="text-sm font-medium truncate">
+                    {{ result.usecase?.description || result.evidence || result.notes }}
+                  </p>
                   <span
-                    class="tag text-[10px]"
+                    class="tag text-[10px] shrink-0"
                     :class="{
                       'tag--success': result.status === 'implemented',
                       'tag--warning': result.status === 'partial',
@@ -478,7 +478,7 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
                   </span>
                   <span
                     v-if="result.confidence"
-                    class="tag text-[10px]"
+                    class="tag text-[10px] shrink-0"
                     :class="{
                       'tag--success': result.confidence === 'high',
                       'tag--warning': result.confidence === 'medium',
@@ -488,15 +488,6 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
                     {{ result.confidence }}
                   </span>
                 </div>
-                <p class="text-sm font-medium truncate">
-                  {{ result.usecase?.title }}
-                </p>
-                <p
-                  v-if="result.usecase?.description && expandedResultId !== result.id"
-                  class="text-xs text-[var(--ui-text-muted)] mt-1 line-clamp-1"
-                >
-                  {{ result.usecase.description }}
-                </p>
               </div>
 
               <!-- Actions -->

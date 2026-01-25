@@ -22,6 +22,20 @@
       "when": 1769097777795,
       "tag": "0002_public_lockheed",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1769350311104,
+      "tag": "0003_closed_robin_chapel",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1769352115553,
+      "tag": "0004_optimal_night_nurse",
+      "breakpoints": true
     }
   ]
 }

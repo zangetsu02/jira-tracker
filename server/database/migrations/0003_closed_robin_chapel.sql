@@ -1,0 +1,1 @@
+ALTER TABLE "analysis_results" ADD COLUMN "jira_issue_summary" varchar(500);

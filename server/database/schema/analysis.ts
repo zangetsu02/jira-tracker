@@ -11,5 +11,6 @@ export const analysisResults = pgTable('analysis_results', {
   evidence: text('evidence'),
   notes: text('notes'),
   jiraIssueKey: varchar('jira_issue_key', { length: 50 }),
+  jiraIssueSummary: varchar('jira_issue_summary', { length: 500 }),
   analyzedAt: timestamp('analyzed_at').defaultNow()
 })

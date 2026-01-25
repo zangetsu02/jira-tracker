@@ -6,6 +6,8 @@ export const jiraConfig = pgTable('jira_config', {
   username: varchar('username', { length: 255 }).notNull(),
   password: text('password').notNull(),
   defaultProject: varchar('default_project', { length: 50 }),
+  baseLabel: varchar('base_label', { length: 100 }),
+  titlePrefix: varchar('title_prefix', { length: 100 }),
   updatedAt: timestamp('updated_at').defaultNow(),
   userId: text('user_id').notNull().unique()
 })

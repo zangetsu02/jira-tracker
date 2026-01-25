@@ -13,7 +13,9 @@ const jiraForm = ref({
   url: '',
   username: '',
   password: '',
-  defaultProject: ''
+  defaultProject: '',
+  baseLabel: '',
+  titlePrefix: ''
 })
 
 const savingSettings = ref(false)
@@ -37,6 +39,8 @@ watch(jiraConfig, (val) => {
     jiraForm.value.username = val.username || ''
     jiraForm.value.password = ''
     jiraForm.value.defaultProject = val.defaultProject || ''
+    jiraForm.value.baseLabel = val.baseLabel || ''
+    jiraForm.value.titlePrefix = val.titlePrefix || ''
   }
 }, { immediate: true })
 
@@ -378,6 +382,50 @@ const testJiraConnection = async () => {
             </div>
             <p class="text-xs text-[var(--ui-text-dimmed)]">
               Chiave del progetto Jira dove creare le issue
+            </p>
+          </div>
+
+          <!-- Base Label Input -->
+          <div class="space-y-2">
+            <label class="text-xs font-semibold uppercase tracking-wider text-[var(--ui-text-muted)]">
+              Label Base
+            </label>
+            <div class="relative">
+              <UIcon
+                name="i-lucide-tag"
+                class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--ui-text-muted)]"
+              />
+              <input
+                v-model="jiraForm.baseLabel"
+                type="text"
+                placeholder="analisi-automatica"
+                class="w-full h-12 pl-11 pr-4 bg-[var(--ui-bg-muted)] border border-[var(--ui-border)] text-sm placeholder:text-[var(--ui-text-dimmed)] focus:outline-none focus:border-[var(--ui-text)] transition-colors"
+              >
+            </div>
+            <p class="text-xs text-[var(--ui-text-dimmed)]">
+              Label aggiunta automaticamente a tutte le issue create
+            </p>
+          </div>
+
+          <!-- Title Prefix Input -->
+          <div class="space-y-2">
+            <label class="text-xs font-semibold uppercase tracking-wider text-[var(--ui-text-muted)]">
+              Formato Titolo
+            </label>
+            <div class="relative">
+              <UIcon
+                name="i-lucide-text-cursor-input"
+                class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--ui-text-muted)]"
+              />
+              <input
+                v-model="jiraForm.titlePrefix"
+                type="text"
+                placeholder="[ANALISI] $NomeMicroservizio - $TitoloIssue"
+                class="w-full h-12 pl-11 pr-4 bg-[var(--ui-bg-muted)] border border-[var(--ui-border)] text-sm placeholder:text-[var(--ui-text-dimmed)] focus:outline-none focus:border-[var(--ui-text)] transition-colors"
+              >
+            </div>
+            <p class="text-xs text-[var(--ui-text-dimmed)]">
+              Variabili disponibili: $NomeMicroservizio, $TitoloIssue
             </p>
           </div>
 

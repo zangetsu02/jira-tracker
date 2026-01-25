@@ -691,9 +691,8 @@ const formatDate = (date: string | null) => {
                 }"
               />
               <div class="flex-1 min-w-0">
-                <p class="text-sm">
-                  <span class="font-mono text-xs text-[var(--ui-text-muted)] mr-2">{{ analysis.usecase?.code }}</span>
-                  {{ analysis.usecase?.title }}
+                <p class="text-xs text-[var(--ui-text-muted)] line-clamp-1">
+                  {{ analysis.usecase?.description || analysis.evidence || analysis.notes }}
                 </p>
                 <div
                   v-if="analysis.jiraIssueKey"
