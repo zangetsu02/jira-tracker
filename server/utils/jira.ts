@@ -78,12 +78,16 @@ export class JiraClient {
     return project.issueTypes || []
   }
 
-  async getAssignableUsers(projectKey: string): Promise<JiraUser[]> {
+  async getAssignableUsers(projectKey: string, query?: string): Promise<JiraUser[]> {
+    // Jira Server uses 'username', Jira Cloud uses 'query'
+    // Try with 'username' first (works on both), then fallback to 'query' for Cloud
+    const usernameParam = query ? `&username=${encodeURIComponent(query)}` : ''
     try {
-      return await this.request<JiraUser[]>(`/rest/api/2/user/assignable/search?project=${projectKey}&maxResults=100`)
+      return await this.request<JiraUser[]>(`/rest/api/2/user/assignable/search?project=${projectKey}${usernameParam}&maxResults=50`)
     } catch {
-      // Fallback for older Jira versions
-      return await this.request<JiraUser[]>(`/rest/api/2/user/search?username=&maxResults=100`)
+      // Fallback: try with 'query' param for Jira Cloud
+      const queryParam = query ? `&query=${encodeURIComponent(query)}` : ''
+      return await this.request<JiraUser[]>(`/rest/api/2/user/assignable/search?project=${projectKey}${queryParam}&maxResults=50`)
     }
   }
 
@@ -121,7 +125,12 @@ export class JiraClient {
         issuetype: { name: issueTypeName },
         ...(params.priority && { priority: { name: params.priority } }),
         ...(params.labels && params.labels.length > 0 && { labels: params.labels }),
-        ...(params.assignee && { assignee: { name: params.assignee } })
+        // Jira Cloud uses accountId, Jira Server uses name
+        ...(params.assignee && {
+          assignee: params.assignee.startsWith('5') || params.assignee.includes(':')
+            ? { accountId: params.assignee }
+            : { name: params.assignee }
+        })
       }
     }
 

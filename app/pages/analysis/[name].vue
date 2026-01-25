@@ -18,56 +18,14 @@ interface AnalysisData {
   }
 }
 
-interface JiraUser {
-  id: string
-  name: string
-  displayName: string
-  email?: string
-  avatar?: string
-}
-
 const { data, pending, error, refresh } = await useFetch<AnalysisData>(
   () => `/api/analysis/${name.value}`
 )
 
 const selectedResult = ref<(AnalysisResult & { usecase?: UseCase }) | null>(null)
 const showJiraModal = ref(false)
-const creatingIssue = ref(false)
-const jiraError = ref<string | null>(null)
 const filterStatus = ref<string>('all')
 const expandedResultId = ref<number | null>(null)
-
-// Jira users
-const { data: jiraUsers, pending: loadingUsers } = useFetch<JiraUser[]>('/api/jira/users', {
-  default: () => []
-})
-
-// Form state for Jira issue
-const issueForm = ref({
-  summary: '',
-  description: '',
-  priority: 'Medium',
-  assignee: '',
-  labels: [] as string[]
-})
-
-const newLabel = ref('')
-
-const priorityOptions = [
-  { label: 'Highest', value: 'Highest', icon: 'i-lucide-chevrons-up' },
-  { label: 'High', value: 'High', icon: 'i-lucide-chevron-up' },
-  { label: 'Medium', value: 'Medium', icon: 'i-lucide-minus' },
-  { label: 'Low', value: 'Low', icon: 'i-lucide-chevron-down' },
-  { label: 'Lowest', value: 'Lowest', icon: 'i-lucide-chevrons-down' }
-]
-
-const userOptions = computed(() => {
-  return (jiraUsers.value || []).map(u => ({
-    label: u.displayName,
-    value: u.name,
-    avatar: u.avatar
-  }))
-})
 
 const filterTabs = computed(() => [
   { id: 'all', label: 'Tutti', count: data.value?.summary.total ?? 0, color: 'neutral' as const },
@@ -84,6 +42,7 @@ const filteredResults = computed(() => {
 })
 
 const shortName = computed(() => name.value.replace('sil-ms-', ''))
+const microserviceName = computed(() => data.value?.microservice.name || 'Unknown')
 
 const toggleExpand = (id: number) => {
   expandedResultId.value = expandedResultId.value === id ? null : id
@@ -91,111 +50,12 @@ const toggleExpand = (id: number) => {
 
 const openJiraModal = (result: AnalysisResult & { usecase?: UseCase }) => {
   selectedResult.value = result
-  jiraError.value = null
-
-  const msName = data.value?.microservice.name || 'Unknown'
-  const uc = result.usecase
-
-  issueForm.value = {
-    summary: uc
-      ? `[${msName}] ${result.status === 'missing' ? 'Implementare' : 'Completare'} UC ${uc.code}: ${uc.title}`
-      : `[${msName}] ${result.evidence || 'Issue da risolvere'}`,
-    description: buildDescription(result, msName),
-    priority: result.confidence === 'high' ? 'High' : result.confidence === 'low' ? 'Low' : 'Medium',
-    assignee: '',
-    labels: [msName]
-  }
-  newLabel.value = ''
-
   showJiraModal.value = true
 }
 
-const buildDescription = (result: AnalysisResult & { usecase?: UseCase }, msName: string): string => {
-  const uc = result.usecase
-  const lines: string[] = []
-
-  lines.push(`*Microservizio:* ${msName}`)
-  lines.push(`*Status:* ${getStatusLabel(result.status)}`)
-  lines.push(`*Confidence:* ${result.confidence || 'N/A'}`)
-  lines.push('')
-
-  if (uc) {
-    if (uc.description) {
-      lines.push('h2. Descrizione Use Case')
-      lines.push(uc.description)
-      lines.push('')
-    }
-    if (uc.actors) {
-      lines.push('h2. Attori')
-      lines.push(uc.actors)
-      lines.push('')
-    }
-    if (uc.mainFlow) {
-      lines.push('h2. Flusso Principale')
-      lines.push(uc.mainFlow)
-      lines.push('')
-    }
-  }
-
-  if (result.notes) {
-    lines.push('h2. Note Analisi')
-    lines.push(result.notes)
-    lines.push('')
-  }
-
-  if (result.evidence) {
-    lines.push('h2. Evidenze')
-    lines.push(result.evidence)
-  }
-
-  return lines.join('\n').trim()
-}
-
-const addLabel = () => {
-  const label = newLabel.value.trim()
-  if (label && !issueForm.value.labels.includes(label)) {
-    issueForm.value.labels.push(label)
-    newLabel.value = ''
-  }
-}
-
-const removeLabel = (label: string) => {
-  issueForm.value.labels = issueForm.value.labels.filter(l => l !== label)
-}
-
-const handleLabelKeydown = (e: KeyboardEvent) => {
-  if (e.key === 'Enter' || e.key === ',') {
-    e.preventDefault()
-    addLabel()
-  }
-}
-
-const createJiraIssue = async () => {
-  if (!selectedResult.value) return
-
-  creatingIssue.value = true
-  jiraError.value = null
-
-  try {
-    const response = await $fetch<{ key: string, url: string }>('/api/jira/issue', {
-      method: 'POST',
-      body: {
-        analysisResultId: selectedResult.value.id,
-        summary: issueForm.value.summary,
-        description: issueForm.value.description,
-        priority: issueForm.value.priority,
-        assignee: issueForm.value.assignee || undefined,
-        labels: issueForm.value.labels
-      }
-    })
-    showJiraModal.value = false
-    await refresh()
-    alert(`Issue creata: ${response.key}`)
-  } catch (e) {
-    jiraError.value = e instanceof Error ? e.message : 'Errore durante creazione issue'
-  } finally {
-    creatingIssue.value = false
-  }
+const handleIssueCreated = async (issueKey: string) => {
+  await refresh()
+  alert(`Issue creata: ${issueKey}`)
 }
 
 // Auto-expand highlighted result
@@ -771,199 +631,11 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
     </div>
 
     <!-- Jira Issue Modal -->
-    <UModal
+    <JiraIssueModal
       v-model:open="showJiraModal"
-      :ui="{
-        width: 'sm:max-w-2xl'
-      }"
-    >
-      <template #header>
-        <div class="flex items-center gap-4">
-          <div class="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center shrink-0">
-            <UIcon
-              name="i-simple-icons-jira"
-              class="w-5 h-5 text-blue-500"
-            />
-          </div>
-          <div class="min-w-0 flex-1">
-            <h2 class="text-lg font-semibold truncate">
-              Crea Issue Jira
-            </h2>
-            <p class="text-sm text-[var(--ui-text-muted)] truncate">
-              {{ selectedResult?.usecase?.code }} - {{ selectedResult?.usecase?.title }}
-            </p>
-          </div>
-        </div>
-      </template>
-
-      <template #body>
-        <div
-          v-if="selectedResult"
-          class="space-y-6"
-        >
-          <!-- Error Alert -->
-          <UAlert
-            v-if="jiraError"
-            color="error"
-            variant="soft"
-            icon="i-lucide-alert-triangle"
-            title="Errore"
-            :description="jiraError"
-            :close-button="{ icon: 'i-lucide-x', color: 'error', variant: 'link' }"
-            @close="jiraError = null"
-          />
-
-          <!-- Status Info -->
-          <div class="flex flex-wrap items-center gap-2 p-3 bg-[var(--ui-bg-elevated)] rounded-lg">
-            <UBadge
-              :color="getStatusColor(selectedResult.status)"
-              variant="subtle"
-              size="sm"
-            >
-              {{ getStatusLabel(selectedResult.status) }}
-            </UBadge>
-            <UBadge
-              v-if="selectedResult.confidence"
-              :color="getConfidenceColor(selectedResult.confidence)"
-              variant="subtle"
-              size="sm"
-            >
-              {{ selectedResult.confidence }}
-            </UBadge>
-            <span class="ml-auto text-xs font-mono text-[var(--ui-text-muted)]">
-              {{ selectedResult.usecase?.code }}
-            </span>
-          </div>
-
-          <!-- Form -->
-          <div class="space-y-5">
-            <!-- Titolo -->
-            <UFormField
-              label="Titolo Issue"
-              required
-            >
-              <UInput
-              class="w-full"
-                v-model="issueForm.summary"
-                placeholder="Titolo della issue"
-                size="lg"
-                autofocus
-              />
-            </UFormField>
-
-            <!-- Priority & Assignee -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <UFormField label="Priorita">
-                <USelect
-                  v-model="issueForm.priority"
-                  :items="priorityOptions"
-                  size="lg"
-                />
-              </UFormField>
-
-              <UFormField label="Assegnatario">
-                <USelect
-                  v-model="issueForm.assignee"
-                  :items="userOptions"
-                  placeholder="Non assegnato"
-                  :loading="loadingUsers"
-                  size="lg"
-                  searchable
-                />
-              </UFormField>
-            </div>
-
-            <!-- Labels -->
-            <UFormField label="Labels">
-              <template #default>
-                <div class="space-y-3">
-                  <!-- Current Labels -->
-                  <div
-                    v-if="issueForm.labels.length > 0"
-                    class="flex flex-wrap gap-2"
-                  >
-                    <UBadge
-                      v-for="label in issueForm.labels"
-                      :key="label"
-                      color="info"
-                      variant="subtle"
-                      size="lg"
-                    >
-                      {{ label }}
-                      <UButton
-                        icon="i-lucide-x"
-                        color="info"
-                        variant="link"
-                        size="2xs"
-                        :padded="false"
-                        class="ml-1"
-                        :aria-label="`Rimuovi ${label}`"
-                        @click="removeLabel(label)"
-                      />
-                    </UBadge>
-                  </div>
-
-                  <!-- Add Label -->
-                  <div class="flex gap-2">
-                    <UInput
-                      v-model="newLabel"
-                      placeholder="Nuova label..."
-                      size="lg"
-                      class="flex-1"
-                      @keydown.enter.prevent="addLabel"
-                    />
-                    <UButton
-                      icon="i-lucide-plus"
-                      color="neutral"
-                      variant="soft"
-                      size="lg"
-                      :disabled="!newLabel.trim()"
-                      @click="addLabel"
-                    />
-                  </div>
-                </div>
-              </template>
-            </UFormField>
-
-            <!-- Description -->
-            <UFormField
-              label="Descrizione"
-              hint="Formato Jira: *bold*, _italic_, h2. Header"
-            >
-              <UTextarea
-                v-model="issueForm.description"
-                placeholder="Descrizione della issue..."
-                :rows="8"
-                size="lg"
-                class="font-mono text-sm"
-              />
-            </UFormField>
-          </div>
-        </div>
-      </template>
-
-      <template #footer>
-        <div class="flex items-center justify-end gap-3">
-          <UButton
-            color="neutral"
-            variant="ghost"
-            size="lg"
-            @click="showJiraModal = false"
-          >
-            Annulla
-          </UButton>
-          <UButton
-            icon="i-lucide-send"
-            color="primary"
-            size="lg"
-            :loading="creatingIssue"
-            :disabled="!issueForm.summary.trim()"
-            @click="createJiraIssue"
-          >
-            Crea Issue
-          </UButton>
-        </div>
-      </template>
-    </UModal>
+      :result="selectedResult"
+      :microservice-name="microserviceName"
+      @created="handleIssueCreated"
+    />
   </div>
 </template>

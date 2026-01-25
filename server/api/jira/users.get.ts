@@ -7,6 +7,8 @@ import { JiraClient } from '~~/server/utils/jira'
 export default defineEventHandler(async (event) => {
   const user = await requireAuth(event)
   const db = await useDB(event)
+  const query = getQuery(event)
+  const searchQuery = query.q as string | undefined
 
   const config = await db
     .select()
@@ -35,10 +37,11 @@ export default defineEventHandler(async (event) => {
   })
 
   try {
-    const users = await client.getAssignableUsers(config[0].defaultProject)
+    const users = await client.getAssignableUsers(config[0].defaultProject, searchQuery)
     return users.map(u => ({
-      id: u.accountId || u.name || u.key,
-      name: u.name || u.key,
+      id: u.accountId || u.name || u.key || '',
+      // Jira Cloud uses accountId, Jira Server uses name/key
+      name: u.accountId || u.name || u.key || '',
       displayName: u.displayName,
       email: u.emailAddress,
       avatar: u.avatarUrls?.['24x24']
