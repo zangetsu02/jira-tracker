@@ -1,10 +1,18 @@
 import { spawn } from 'child_process'
 import { buildAnalysisPrompt } from '../prompts/analysis'
 import {
+  buildExtractUseCasesPrompt,
+  type UseCaseExtractionResult,
+  type ExtractedUseCase
+} from '../prompts/extract-usecases'
+import {
   CLAUDE_TIMEOUT_MS,
   MIN_RESPONSE_LENGTH,
   type IssuesOnlyResult
 } from './analysis'
+import type { UseCase } from '~~/shared/utils/types'
+
+export type { ExtractedUseCase, UseCaseExtractionResult }
 
 // ============================================================================
 // TYPES
@@ -46,7 +54,14 @@ async function executeClaudeCli(
   onProgress?: ProgressCallback
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    const args = ['-p', prompt, '--output-format', 'stream-json', '--verbose', ...files]
+    // Build args: use --add-dir to allow access to file directories
+    const dirs = [...new Set(files.map(f => f.substring(0, f.lastIndexOf('/'))))]
+    const addDirArgs = dirs.flatMap(d => ['--add-dir', d])
+
+    const args = ['-p', prompt, '--output-format', 'stream-json', '--verbose', ...addDirArgs]
+
+    console.log('[executeClaudeCli] Running claude with args:', args.slice(0, 5).join(' '), '...')
+    console.log('[executeClaudeCli] Allowing dirs:', dirs)
 
     onProgress?.('Avvio analisi Claude...', 'starting')
 
@@ -74,15 +89,23 @@ async function executeClaudeCli(
         const message = parseClaudeMessage(line)
         if (!message) continue
 
-        if (message.type === 'result' && message.result && message.result.length > MIN_RESPONSE_LENGTH) {
-          fullText = message.result
-          if (message.cost_usd) {
-            onProgress?.(`Costo: $${message.cost_usd.toFixed(4)}`, 'cost')
+        console.log('[Claude] Message type:', message.type)
+
+        if (message.type === 'result') {
+          const resultMsg = message as ClaudeResultMessage
+          console.log('[Claude] Result message, result length:', resultMsg.result?.length ?? 0)
+          if (resultMsg.result && resultMsg.result.length > MIN_RESPONSE_LENGTH) {
+            fullText = resultMsg.result
+            console.log('[Claude] Using result as fullText, length:', fullText.length)
+            if (resultMsg.cost_usd) {
+              onProgress?.(`Costo: $${resultMsg.cost_usd.toFixed(4)}`, 'cost')
+            }
           }
         } else if (message.type === 'assistant') {
-          const text = extractAssistantText(message)
+          const text = extractAssistantText(message as ClaudeAssistantMessage)
           if (text) {
             fullText += text
+            console.log('[Claude] Appending assistant text, total length:', fullText.length)
             onProgress?.(text.substring(0, 100), 'analyzing')
           }
         }
@@ -138,12 +161,31 @@ function extractAssistantText(message: ClaudeAssistantMessage): string | null {
  * Extract JSON object from text response
  */
 function extractJson(text: string): string {
+  console.log('[extractJson] Input length:', text.length)
+  console.log('[extractJson] First 500 chars:', text.substring(0, 500))
+  console.log('[extractJson] Last 500 chars:', text.substring(Math.max(0, text.length - 500)))
+
+  // Try to find JSON block in markdown code fence first
+  const codeBlockMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/)
+  if (codeBlockMatch) {
+    console.log('[extractJson] Found JSON in code block')
+    return codeBlockMatch[1]
+  }
+
+  // Find the outermost { } pair that contains "usecases" or "issues"
   const start = text.indexOf('{')
   const end = text.lastIndexOf('}')
+
   if (start === -1 || end === -1 || end < start) {
+    console.error('[extractJson] No JSON found in response')
+    console.error('[extractJson] Full text:', text)
     throw new Error('Nessun JSON trovato nella risposta')
   }
-  return text.slice(start, end + 1)
+
+  const jsonStr = text.slice(start, end + 1)
+  console.log('[extractJson] Extracted JSON length:', jsonStr.length)
+
+  return jsonStr
 }
 
 /**
@@ -157,9 +199,28 @@ function parseIssuesJson(text: string): IssuesOnlyResult {
   }
 }
 
+/**
+ * Parse use cases from Claude response
+ */
+function parseUseCasesJson(text: string): UseCaseExtractionResult {
+  const jsonStr = extractJson(text)
+  const parsed = JSON.parse(jsonStr)
+  return {
+    usecases: Array.isArray(parsed.usecases) ? parsed.usecases : []
+  }
+}
+
 // ============================================================================
 // PUBLIC API
 // ============================================================================
+
+export interface AnalyzeMicroserviceOptions {
+  microservicePath: string
+  legacyPath: string | null
+  pdfPath: string | null
+  usecases?: UseCase[]
+  onProgress?: ProgressCallback
+}
 
 /**
  * Analyze microservice and return JIRA issues
@@ -168,9 +229,27 @@ export async function analyzeMicroservice(
   microservicePath: string,
   legacyPath: string | null,
   pdfPath: string | null,
-  onProgress?: ProgressCallback
+  onProgressOrOptions?: ProgressCallback | AnalyzeMicroserviceOptions,
+  usecases?: UseCase[]
 ): Promise<IssuesOnlyResult> {
-  const prompt = buildAnalysisPrompt({ microservicePath, legacyPath, pdfPath })
+  // Handle both old and new call signatures
+  let onProgress: ProgressCallback | undefined
+  let ucList: UseCase[] | undefined
+
+  if (typeof onProgressOrOptions === 'function') {
+    onProgress = onProgressOrOptions
+    ucList = usecases
+  } else if (onProgressOrOptions) {
+    onProgress = onProgressOrOptions.onProgress
+    ucList = onProgressOrOptions.usecases
+  }
+
+  const prompt = buildAnalysisPrompt({
+    microservicePath,
+    legacyPath,
+    pdfPath,
+    usecases: ucList
+  })
 
   onProgress?.('Preparazione prompt...', 'preparing')
   onProgress?.(`Prompt length: ${prompt.length} chars`, 'info')
@@ -181,4 +260,30 @@ export async function analyzeMicroservice(
   onProgress?.('Parsing risposta...', 'parsing')
 
   return parseIssuesJson(response)
+}
+
+/**
+ * Extract use cases from PDF document
+ */
+export async function extractUseCasesFromPdf(
+  pdfPath: string,
+  onProgress?: ProgressCallback
+): Promise<UseCaseExtractionResult> {
+  const prompt = buildExtractUseCasesPrompt({ pdfPath })
+
+  console.log('[extractUseCasesFromPdf] Starting extraction')
+  console.log('[extractUseCasesFromPdf] PDF path:', pdfPath)
+  console.log('[extractUseCasesFromPdf] Prompt length:', prompt.length)
+
+  onProgress?.('Preparazione estrazione use case...', 'preparing')
+  onProgress?.(`PDF: ${pdfPath}`, 'info')
+
+  const response = await executeClaudeCli(prompt, [pdfPath], onProgress)
+
+  console.log('[extractUseCasesFromPdf] Response length:', response.length)
+  console.log('[extractUseCasesFromPdf] Response preview:', response.substring(0, 300))
+
+  onProgress?.('Parsing use case...', 'parsing')
+
+  return parseUseCasesJson(response)
 }

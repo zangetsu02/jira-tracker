@@ -1,7 +1,10 @@
+import type { UseCase } from '~~/shared/utils/types'
+
 export interface AnalysisPromptParams {
   microservicePath: string
   legacyPath: string | null
   pdfPath: string | null
+  usecases?: UseCase[]
 }
 
 const PROMPT_TEMPLATE = `# Analisi Microservizio
@@ -11,25 +14,34 @@ Sei un senior software engineer specializzato in migrazione da sistemi legacy AS
 ## Contesto
 
 - **Microservizio**: \`{{microservicePath}}\`
-{{#if pdfPath}}- **Documento requisiti (PDF)**: \`{{pdfPath}}\`{{/if}}
 {{#if legacyPath}}- **Codice legacy ASPX**: \`{{legacyPath}}\`{{/if}}
+{{#if pdfPath}}- **Documento requisiti (PDF)**: \`{{pdfPath}}\`{{/if}}
+
+{{#if usecases}}
+## Use Case da Verificare
+
+I seguenti use case sono stati estratti dal documento dei requisiti e devono essere verificati nel codice:
+
+{{usecasesList}}
+{{/if}}
 
 ## Obiettivo
 
-Analizza il microservizio e identifica issue da risolvere.
-
-## Cosa analizzare
-
-1. **Requisiti** (dal PDF): estrai use case e verifica copertura
-2. **Implementazione**: mappa endpoint, servizi, repository
-3. **Legacy** (se presente): confronta comportamento
+Analizza il microservizio e identifica issue da risolvere confrontando:
+{{#if usecases}}
+1. **Use Case estratti**: verifica che ogni use case sia implementato correttamente
+{{/if}}
+{{#if legacyPath}}
+2. **Codice Legacy**: confronta il comportamento con il sistema ASPX originale
+{{/if}}
+3. **Implementazione**: mappa endpoint, servizi, repository e verifica completezza
 
 ## Tipi di Issue
 
-- \`missing_implementation\`: Funzionalita assente
+- \`missing_implementation\`: Funzionalita assente (use case non implementato)
 - \`partial_implementation\`: Funzionalita incompleta
 - \`legacy_mismatch\`: Comportamento diverso dal legacy
-- \`behavior_difference\`: Differenza rispetto ai requisiti
+- \`behavior_difference\`: Differenza rispetto ai requisiti/use case
 - \`missing_test\`: Funzionalita non testata
 - \`security_concern\`: Problema di sicurezza
 - \`performance_concern\`: Problema di performance
@@ -51,7 +63,8 @@ REGOLE CRITICHE:
 - Output SOLO JSON, nessun testo prima o dopo
 - Nessun markdown, nessun code fence, nessun commento
 - JSON deve iniziare con { e terminare con }
-- Usa null per campi non applicabili`
+- Usa null per campi non applicabili
+- In relatedUseCases usa i codici degli use case forniti sopra`
 
 /**
  * Build analysis prompt from template
@@ -65,6 +78,24 @@ export function buildAnalysisPrompt(params: AnalysisPromptParams): string {
   // Handle conditional blocks
   template = processConditionalBlock(template, 'pdfPath', params.pdfPath)
   template = processConditionalBlock(template, 'legacyPath', params.legacyPath)
+
+  // Handle use cases
+  if (params.usecases && params.usecases.length > 0) {
+    const usecasesList = params.usecases.map(uc => {
+      const lines = [`### ${uc.code || 'UC'}: ${uc.title || 'Senza titolo'}`]
+      if (uc.description) lines.push(`**Descrizione**: ${uc.description}`)
+      if (uc.actors) lines.push(`**Attori**: ${uc.actors}`)
+      if (uc.preconditions) lines.push(`**Precondizioni**: ${uc.preconditions}`)
+      if (uc.mainFlow) lines.push(`**Flusso principale**: ${uc.mainFlow}`)
+      if (uc.alternativeFlows) lines.push(`**Flussi alternativi**: ${uc.alternativeFlows}`)
+      return lines.join('\n')
+    }).join('\n\n')
+
+    template = template.replace(/\{\{usecasesList\}\}/g, usecasesList)
+    template = processConditionalBlock(template, 'usecases', 'true')
+  } else {
+    template = processConditionalBlock(template, 'usecases', null)
+  }
 
   return template
 }

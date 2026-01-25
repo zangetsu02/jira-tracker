@@ -8,41 +8,53 @@ const clickSignOut = () => {
 const route = useRoute()
 
 const navigation = [
-  { to: '/', icon: 'i-lucide-home', label: 'Dashboard' },
-  { to: '/analysis', icon: 'i-lucide-search', label: 'Analisi' },
-  { to: '/settings', icon: 'i-lucide-settings', label: 'Settings' }
+  { to: '/', icon: 'i-lucide-layout-dashboard', label: 'Dashboard' },
+  { to: '/settings', icon: 'i-lucide-settings-2', label: 'Impostazioni' }
 ]
 
 const isActiveRoute = (to: string) => {
   if (to === '/') return route.path === '/'
   return route.path.startsWith(to)
 }
+
+const currentTime = ref('')
+const updateTime = () => {
+  currentTime.value = new Date().toLocaleTimeString('it-IT', {
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+onMounted(() => {
+  updateTime()
+  setInterval(updateTime, 1000)
+})
 </script>
 
 <template>
-  <div class="min-h-screen bg-[var(--ui-bg)] flex">
+  <div class="min-h-screen bg-[var(--ui-bg)]">
     <NuxtRouteAnnouncer />
-    <NuxtLoadingIndicator color="var(--ui-primary)" />
+    <NuxtLoadingIndicator color="var(--accent)" />
 
     <!-- Sidebar -->
-    <aside class="w-16 min-h-screen bg-[var(--ui-bg)] border-r border-[var(--ui-border)] flex flex-col fixed z-50">
+    <aside class="fixed left-0 top-0 bottom-0 w-[var(--sidebar-width)] bg-[var(--ui-bg-elevated)] border-r border-[var(--ui-border)] flex flex-col z-50">
       <!-- Logo -->
-      <div class="h-16 flex items-center justify-center border-b border-[var(--ui-border)]">
-        <UTooltip
-          text="Jira Checker"
-          :delay-open="0"
+      <div class="h-[var(--header-height)] flex items-center justify-center border-b border-[var(--ui-border)]">
+        <NuxtLink
+          to="/"
+          class="group"
         >
-          <div class="w-9 h-9 bg-[var(--ui-primary)] rounded-lg flex items-center justify-center shadow-sm">
+          <div class="w-10 h-10 bg-[var(--ui-text)] flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
             <UIcon
-              name="i-lucide-check-square"
+              name="i-lucide-scan-search"
               class="w-5 h-5 text-[var(--ui-bg)]"
             />
           </div>
-        </UTooltip>
+        </NuxtLink>
       </div>
 
       <!-- Navigation -->
-      <nav class="flex-1 py-4 flex flex-col items-center gap-1">
+      <nav class="flex-1 py-6 flex flex-col items-center gap-2">
         <UTooltip
           v-for="item in navigation"
           :key="item.to"
@@ -52,10 +64,10 @@ const isActiveRoute = (to: string) => {
         >
           <NuxtLink
             :to="item.to"
-            class="w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-200"
+            class="relative w-11 h-11 flex items-center justify-center transition-all duration-200"
             :class="isActiveRoute(item.to)
-              ? 'bg-[var(--ui-bg-elevated)] text-[var(--ui-text)] shadow-sm'
-              : 'text-[var(--ui-text-muted)] hover:bg-[var(--ui-bg-elevated)] hover:text-[var(--ui-text)]'"
+              ? 'bg-[var(--ui-text)] text-[var(--ui-bg)]'
+              : 'text-[var(--ui-text-muted)] hover:bg-[var(--ui-bg-muted)] hover:text-[var(--ui-text)]'"
           >
             <UIcon
               :name="item.icon"
@@ -65,39 +77,43 @@ const isActiveRoute = (to: string) => {
         </UTooltip>
       </nav>
 
-      <!-- User section -->
-      <div class="py-4 flex flex-col items-center gap-2 border-t border-[var(--ui-border)]">
+      <!-- Bottom Section -->
+      <div class="py-6 flex flex-col items-center gap-3 border-t border-[var(--ui-border)]">
+        <!-- Time -->
+        <div class="text-[10px] font-mono text-[var(--ui-text-dimmed)] tracking-wider">
+          {{ currentTime }}
+        </div>
+
+        <!-- Theme Toggle -->
         <UColorModeButton
-          size="xs"
+          size="sm"
           color="neutral"
           variant="ghost"
+          class="w-11 h-11"
         />
 
+        <!-- User Avatar -->
         <UTooltip
           v-if="loggedIn"
-          :text="user?.email || 'Logout'"
+          :text="`Logout (${user?.email})`"
           :delay-open="0"
           side="right"
         >
-          <UButton
-            color="neutral"
-            variant="ghost"
-            size="sm"
-            class="w-9 h-9 rounded-full p-0"
+          <button
+            class="w-11 h-11 flex items-center justify-center bg-[var(--ui-bg-muted)] hover:bg-[var(--ui-bg-accent)] transition-colors duration-200"
             @click="clickSignOut"
           >
-            <UAvatar
-              :text="user?.email?.[0]?.toUpperCase() || 'U'"
-              size="xs"
-            />
-          </UButton>
+            <span class="text-sm font-medium text-[var(--ui-text)]">
+              {{ user?.email?.[0]?.toUpperCase() || 'U' }}
+            </span>
+          </button>
         </UTooltip>
       </div>
     </aside>
 
-    <!-- Main content -->
-    <main class="flex-1 ml-16">
-      <div class="max-w-6xl mx-auto px-8 py-8">
+    <!-- Main Content -->
+    <main class="ml-[var(--sidebar-width)] min-h-screen">
+      <div class="px-8 py-8 lg:px-12 lg:py-10">
         <slot />
       </div>
     </main>

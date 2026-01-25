@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { useDB } from '~~/server/utils/db'
-import { microservices, analysisResults } from '~~/server/database/schema'
-import { analyzeMicroservice } from '~~/server/utils/claude'
+import { microservices, analysisResults, usecases } from '~~/server/database/schema'
+import { analyzeMicroservice, extractUseCasesFromPdf } from '~~/server/utils/claude'
 import {
   findLegacyPath,
   buildJiraDescription,
@@ -9,6 +9,7 @@ import {
   severityToConfidence,
   type IssuesOnlyResult
 } from '~~/server/utils/analysis'
+import type { UseCaseExtractionResult } from '~~/server/utils/claude'
 
 // ============================================================================
 // CONSTANTS
@@ -36,72 +37,17 @@ export default defineWebSocketHandler({
       return
     }
 
-    if (data.type !== 'start-analysis') {
-      return
-    }
-
     const { microserviceName } = data
     if (!microserviceName) {
       peer.send(JSON.stringify({ type: 'error', message: 'Nome microservizio richiesto' }))
       return
     }
 
-    const db = await useDB()
-
-    const [ms] = await db
-      .select()
-      .from(microservices)
-      .where(eq(microservices.name, microserviceName))
-      .limit(1)
-
-    if (!ms) {
-      peer.send(JSON.stringify({ type: 'error', message: 'Microservizio non trovato' }))
-      return
-    }
-
-    const legacyPath = await findLegacyPath(ms.path)
-    const pdfPath = ms.pdfPath || null
-
-    if (!pdfPath && !legacyPath) {
-      peer.send(JSON.stringify({ type: 'error', message: 'Nessun PDF o codice legacy trovato.' }))
-      return
-    }
-
-    try {
-      sendStatus(peer, 'init', 'Inizializzazione analisi...', 5)
-      sendStatus(peer, 'cleanup', 'Pulizia dati precedenti...', 8)
-
-      await db.delete(analysisResults).where(eq(analysisResults.microserviceId, ms.id))
-
-      sendStatus(peer, 'claude_start', 'Avvio analisi con Claude...', 15)
-
-      let lastPhase = ''
-      const result = await analyzeMicroservice(ms.path, legacyPath, pdfPath, (chunk, phase) => {
-        const progress = PHASE_PROGRESS[phase] ?? 50
-
-        if (phase !== lastPhase) {
-          lastPhase = phase
-          sendStatus(peer, phase, chunk, progress)
-        }
-
-        peer.send(JSON.stringify({ type: 'chunk', text: chunk, phase, progress }))
-      })
-
-      sendStatus(peer, 'saving', `Salvataggio ${result.issues.length} issue...`, 98)
-
-      await saveAnalysisResults(db, ms.id, result)
-      await updateMicroservice(db, ms.id, result, legacyPath)
-
-      peer.send(JSON.stringify({
-        type: 'complete',
-        issuesCount: result.issues.length,
-        progress: 100
-      }))
-    } catch (error) {
-      peer.send(JSON.stringify({
-        type: 'error',
-        message: error instanceof Error ? error.message : 'Errore sconosciuto'
-      }))
+    // Route to appropriate handler
+    if (data.type === 'start-extraction') {
+      await handleExtraction(peer, microserviceName)
+    } else if (data.type === 'start-analysis') {
+      await handleAnalysis(peer, microserviceName)
     }
   },
 
@@ -118,7 +64,7 @@ export default defineWebSocketHandler({
 // HELPER FUNCTIONS
 // ============================================================================
 
-function parseMessage(message: unknown): { type: string; microserviceName?: string } | null {
+function parseMessage(message: unknown): { type: string, microserviceName?: string } | null {
   try {
     const msgText = typeof message === 'string' ? message : (message as { text: () => string }).text()
     return JSON.parse(msgText)
@@ -129,6 +75,173 @@ function parseMessage(message: unknown): { type: string; microserviceName?: stri
 
 function sendStatus(peer: { send: (msg: string) => void }, step: string, message: string, progress: number): void {
   peer.send(JSON.stringify({ type: 'status', step, message, progress }))
+}
+
+// ============================================================================
+// EXTRACTION HANDLER
+// ============================================================================
+
+async function handleExtraction(
+  peer: { send: (msg: string) => void },
+  microserviceName: string
+): Promise<void> {
+  const db = await useDB()
+
+  const [ms] = await db
+    .select()
+    .from(microservices)
+    .where(eq(microservices.name, microserviceName))
+    .limit(1)
+
+  if (!ms) {
+    peer.send(JSON.stringify({ type: 'error', message: 'Microservizio non trovato' }))
+    return
+  }
+
+  if (!ms.pdfPath) {
+    peer.send(JSON.stringify({ type: 'error', message: 'Nessun PDF caricato' }))
+    return
+  }
+
+  try {
+    sendStatus(peer, 'init', 'Inizializzazione estrazione...', 5)
+    sendStatus(peer, 'cleanup', 'Pulizia use case precedenti...', 10)
+
+    await db.delete(usecases).where(eq(usecases.microserviceId, ms.id))
+
+    sendStatus(peer, 'claude_start', 'Avvio estrazione con Claude...', 15)
+
+    let lastPhase = ''
+    const result = await extractUseCasesFromPdf(ms.pdfPath, (chunk, phase) => {
+      const progress = PHASE_PROGRESS[phase] ?? 50
+
+      if (phase !== lastPhase) {
+        lastPhase = phase
+        sendStatus(peer, phase, chunk, progress)
+      }
+
+      peer.send(JSON.stringify({ type: 'chunk', text: chunk, phase, progress }))
+    })
+
+    sendStatus(peer, 'saving', `Salvataggio ${result.usecases.length} use case...`, 95)
+
+    await saveUseCases(db, ms.id, result)
+
+    peer.send(JSON.stringify({
+      type: 'complete',
+      usecasesCount: result.usecases.length,
+      progress: 100
+    }))
+  } catch (error) {
+    peer.send(JSON.stringify({
+      type: 'error',
+      message: error instanceof Error ? error.message : 'Errore sconosciuto'
+    }))
+  }
+}
+
+// ============================================================================
+// ANALYSIS HANDLER
+// ============================================================================
+
+async function handleAnalysis(
+  peer: { send: (msg: string) => void },
+  microserviceName: string
+): Promise<void> {
+  const db = await useDB()
+
+  const [ms] = await db
+    .select()
+    .from(microservices)
+    .where(eq(microservices.name, microserviceName))
+    .limit(1)
+
+  if (!ms) {
+    peer.send(JSON.stringify({ type: 'error', message: 'Microservizio non trovato' }))
+    return
+  }
+
+  const legacyPath = await findLegacyPath(ms.path)
+  const pdfPath = ms.pdfPath || null
+
+  // Fetch use cases from database
+  const msUsecases = await db
+    .select()
+    .from(usecases)
+    .where(eq(usecases.microserviceId, ms.id))
+
+  // Require either use cases, PDF, or legacy code
+  if (msUsecases.length === 0 && !pdfPath && !legacyPath) {
+    peer.send(JSON.stringify({ type: 'error', message: 'Nessun use case estratto, PDF o codice legacy trovato. Estrai prima gli use case dal PDF.' }))
+    return
+  }
+
+  try {
+    sendStatus(peer, 'init', 'Inizializzazione analisi...', 5)
+    sendStatus(peer, 'cleanup', 'Pulizia dati precedenti...', 8)
+
+    await db.delete(analysisResults).where(eq(analysisResults.microserviceId, ms.id))
+
+    sendStatus(peer, 'loading_usecases', `Caricamento ${msUsecases.length} use case...`, 12)
+    sendStatus(peer, 'claude_start', 'Avvio analisi con Claude...', 15)
+
+    let lastPhase = ''
+    const result = await analyzeMicroservice(
+      ms.path,
+      legacyPath,
+      pdfPath,
+      (chunk, phase) => {
+        const progress = PHASE_PROGRESS[phase] ?? 50
+
+        if (phase !== lastPhase) {
+          lastPhase = phase
+          sendStatus(peer, phase, chunk, progress)
+        }
+
+        peer.send(JSON.stringify({ type: 'chunk', text: chunk, phase, progress }))
+      },
+      msUsecases
+    )
+
+    sendStatus(peer, 'saving', `Salvataggio ${result.issues.length} issue...`, 98)
+
+    await saveAnalysisResults(db, ms.id, result)
+    await updateMicroservice(db, ms.id, result, legacyPath)
+
+    peer.send(JSON.stringify({
+      type: 'complete',
+      issuesCount: result.issues.length,
+      progress: 100
+    }))
+  } catch (error) {
+    peer.send(JSON.stringify({
+      type: 'error',
+      message: error instanceof Error ? error.message : 'Errore sconosciuto'
+    }))
+  }
+}
+
+// ============================================================================
+// DATABASE HELPERS
+// ============================================================================
+
+async function saveUseCases(
+  db: Awaited<ReturnType<typeof useDB>>,
+  microserviceId: number,
+  result: UseCaseExtractionResult
+): Promise<void> {
+  for (const uc of result.usecases) {
+    await db.insert(usecases).values({
+      microserviceId,
+      code: uc.code || null,
+      title: uc.title || null,
+      description: uc.description || null,
+      actors: uc.actors || null,
+      preconditions: uc.preconditions || null,
+      mainFlow: uc.mainFlow || null,
+      alternativeFlows: uc.alternativeFlows || null
+    })
+  }
 }
 
 async function saveAnalysisResults(

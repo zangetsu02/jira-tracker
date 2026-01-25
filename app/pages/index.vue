@@ -21,13 +21,6 @@ const stats = computed(() => {
   }
 })
 
-const recentMicroservices = computed(() => {
-  return [...(microservices.value ?? [])]
-    .filter(m => m.lastAnalysis)
-    .sort((a, b) => new Date(b.lastAnalysis!).getTime() - new Date(a.lastAnalysis!).getTime())
-    .slice(0, 5)
-})
-
 const greeting = computed(() => {
   const hour = new Date().getHours()
   if (hour < 12) return 'Buongiorno'
@@ -35,36 +28,71 @@ const greeting = computed(() => {
   return 'Buonasera'
 })
 
-const userName = computed(() => user.value?.email?.split('@')[0] ?? 'utente')
+const userName = computed(() => {
+  const email = user.value?.email
+  if (!email) return 'utente'
+  const name = email.split('@')[0]
+  return name.charAt(0).toUpperCase() + name.slice(1)
+})
 
 const getMicroserviceCoverageColor = (ms: MicroserviceWithStatus) => {
   if (!ms.useCaseCount) return 'neutral'
   const percentage = Math.round((ms.implementedCount / ms.useCaseCount) * 100)
   return getCoverageColor(percentage)
 }
+
+const getMicroserviceCoverage = (ms: MicroserviceWithStatus) => {
+  if (!ms.useCaseCount) return 0
+  return Math.round((ms.implementedCount / ms.useCaseCount) * 100)
+}
+
+const formatDate = (date: string | null) => {
+  if (!date) return '-'
+  return new Date(date).toLocaleDateString('it-IT', {
+    day: '2-digit',
+    month: 'short'
+  })
+}
 </script>
 
 <template>
-  <div>
+  <div class="animate-fade-in">
     <!-- Header -->
-    <div class="mb-8">
-      <h1 class="text-3xl font-serif">
-        {{ greeting }} <span class="text-[var(--ui-text-muted)]">{{ userName }},</span>
-      </h1>
-      <p class="text-[var(--ui-text-muted)] mt-1">
-        ecco un rapido sguardo a come stanno andando le cose.
-      </p>
-    </div>
+    <header class="mb-10">
+      <div class="flex items-end justify-between gap-8">
+        <div>
+          <h1 class="text-4xl lg:text-5xl font-display tracking-tight">
+            {{ greeting }}, {{ userName }}
+          </h1>
+          <p class="text-[var(--ui-text-muted)] mt-2 text-lg">
+            Panoramica dello stato dei microservizi
+          </p>
+        </div>
+        <UButton
+          icon="i-lucide-refresh-cw"
+          color="neutral"
+          variant="ghost"
+          size="lg"
+          :loading="pending"
+          @click="refresh()"
+        >
+          Aggiorna
+        </UButton>
+      </div>
+    </header>
 
     <!-- Loading -->
     <div
       v-if="pending && !microservices"
-      class="flex justify-center py-16"
+      class="flex items-center justify-center py-32"
     >
-      <UIcon
-        name="i-lucide-loader-2"
-        class="w-8 h-8 animate-spin text-[var(--ui-text-muted)]"
-      />
+      <div class="flex flex-col items-center gap-4">
+        <UIcon
+          name="i-lucide-loader-2"
+          class="w-8 h-8 animate-spin text-[var(--ui-text-muted)]"
+        />
+        <span class="text-sm text-[var(--ui-text-muted)]">Caricamento...</span>
+      </div>
     </div>
 
     <!-- Error -->
@@ -73,306 +101,244 @@ const getMicroserviceCoverageColor = (ms: MicroserviceWithStatus) => {
       color="error"
       variant="soft"
       icon="i-lucide-alert-triangle"
-      title="Errore"
+      title="Errore di caricamento"
       :description="error.message"
+      class="mb-8"
     />
 
-    <div v-else-if="stats">
-      <!-- Stats Row 1 -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <!-- Microservizi -->
-        <UCard>
-          <template #header>
-            <div class="flex items-center gap-2">
-              <UIcon
-                name="i-lucide-box"
-                class="w-4 h-4 text-[var(--ui-text-muted)]"
-              />
-              <span class="text-sm font-medium">Microservizi</span>
+    <div
+      v-else-if="stats"
+      class="space-y-8"
+    >
+      <!-- Stats Bento Grid -->
+      <div class="bento-grid">
+        <!-- Coverage - Large Card -->
+        <div class="bento-item bento-item--span-4 p-6 animate-slide-up stagger-1">
+          <div class="flex items-start justify-between mb-6">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wider text-[var(--ui-text-muted)] mb-1">
+                Copertura Totale
+              </p>
+              <p class="text-5xl font-display">
+                {{ stats.coverage }}<span class="text-2xl text-[var(--ui-text-muted)]">%</span>
+              </p>
             </div>
-          </template>
-          <p class="text-sm text-[var(--ui-text-muted)] mb-4">
-            Totale microservizi monitorati
-          </p>
-          <p class="text-3xl font-semibold mb-2">
-            {{ stats.total }}
-          </p>
-          <NuxtLink
-            to="/"
-            class="text-xs text-[var(--ui-primary)] hover:underline"
-          >
-            Visualizza tutti
-          </NuxtLink>
-        </UCard>
-
-        <!-- Analizzati -->
-        <UCard>
-          <template #header>
-            <div class="flex items-center gap-2">
-              <UIcon
-                name="i-lucide-search-check"
-                class="w-4 h-4 text-[var(--ui-text-muted)]"
-              />
-              <span class="text-sm font-medium">Analizzati</span>
-            </div>
-          </template>
-          <p class="text-sm text-[var(--ui-text-muted)] mb-4">
-            Microservizi con analisi completata
-          </p>
-          <p class="text-3xl font-semibold mb-2">
-            {{ stats.analyzed }}
-          </p>
-          <p class="text-xs text-[var(--ui-text-muted)]">
-            su {{ stats.total }} totali
-          </p>
-        </UCard>
-
-        <!-- Copertura -->
-        <UCard>
-          <template #header>
-            <div class="flex items-center gap-2">
-              <UIcon
-                name="i-lucide-check-circle"
-                class="w-4 h-4 text-[var(--ui-text-muted)]"
-              />
-              <span class="text-sm font-medium">Copertura UC</span>
-            </div>
-          </template>
-          <p class="text-sm text-[var(--ui-text-muted)] mb-4">
-            Use case implementati correttamente
-          </p>
-          <div class="flex items-baseline gap-3 mb-2">
-            <p class="text-3xl font-semibold">
-              {{ stats.coverage }}%
-            </p>
-            <UBadge
-              :color="getCoverageColor(stats.coverage)"
-              variant="subtle"
-              size="sm"
+            <div
+              class="w-12 h-12 flex items-center justify-center"
+              :class="stats.coverage >= 80 ? 'bg-[var(--ui-success-soft)]' : stats.coverage >= 50 ? 'bg-[var(--ui-warning-soft)]' : 'bg-[var(--ui-error-soft)]'"
             >
-              {{ stats.implementedUseCases }}/{{ stats.totalUseCases }}
-            </UBadge>
+              <UIcon
+                name="i-lucide-pie-chart"
+                class="w-6 h-6"
+                :class="stats.coverage >= 80 ? 'text-[var(--ui-success)]' : stats.coverage >= 50 ? 'text-[var(--ui-warning)]' : 'text-[var(--ui-error)]'"
+              />
+            </div>
           </div>
-          <UProgress
-            :value="stats.coverage"
-            :color="getCoverageColor(stats.coverage)"
-            size="sm"
-            :animation="false"
-          />
-        </UCard>
-      </div>
-
-      <!-- Stats Row 2 -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <!-- Con Issues -->
-        <UCard>
-          <template #header>
-            <div class="flex items-center gap-2">
-              <UIcon
-                name="i-lucide-alert-triangle"
-                class="w-4 h-4 text-[var(--ui-text-muted)]"
+          <div class="space-y-3">
+            <div class="h-3 bg-[var(--ui-bg-muted)] overflow-hidden">
+              <div
+                class="h-full transition-all duration-700 ease-out"
+                :class="stats.coverage >= 80 ? 'bg-[var(--ui-success)]' : stats.coverage >= 50 ? 'bg-[var(--ui-warning)]' : 'bg-[var(--ui-error)]'"
+                :style="{ width: `${stats.coverage}%` }"
               />
-              <span class="text-sm font-medium">Con Issues</span>
             </div>
-          </template>
-          <p class="text-sm text-[var(--ui-text-muted)] mb-4">
-            Microservizi con problemi rilevati
-          </p>
-          <div class="flex items-baseline gap-3 mb-2">
-            <p
-              class="text-3xl font-semibold"
-              :class="stats.withIssues > 0 ? 'text-[var(--ui-error)]' : ''"
-            >
-              {{ stats.withIssues }}
+            <p class="text-sm text-[var(--ui-text-muted)]">
+              <span class="font-mono font-medium text-[var(--ui-text)]">{{ stats.implementedUseCases }}</span>
+              di
+              <span class="font-mono font-medium text-[var(--ui-text)]">{{ stats.totalUseCases }}</span>
+              use case implementati
             </p>
-            <UBadge
-              v-if="stats.withIssues > 0"
-              color="error"
-              variant="subtle"
-              size="sm"
-            >
-              da risolvere
-            </UBadge>
           </div>
-          <UProgress
-            v-if="stats.withIssues > 0 && stats.total > 0"
-            :value="(stats.withIssues / stats.total) * 100"
-            color="error"
-            size="sm"
-            :animation="false"
-          />
-        </UCard>
-
-        <!-- Parziali -->
-        <UCard>
-          <template #header>
-            <div class="flex items-center gap-2">
-              <UIcon
-                name="i-lucide-clock"
-                class="w-4 h-4 text-[var(--ui-text-muted)]"
-              />
-              <span class="text-sm font-medium">Parziali</span>
-            </div>
-          </template>
-          <p class="text-sm text-[var(--ui-text-muted)] mb-4">
-            Implementazioni incomplete
-          </p>
-          <div class="flex items-baseline gap-3 mb-2">
-            <p
-              class="text-3xl font-semibold"
-              :class="stats.partial > 0 ? 'text-[var(--ui-warning)]' : ''"
-            >
-              {{ stats.partial }}
-            </p>
-            <UBadge
-              v-if="stats.partial > 0"
-              color="warning"
-              variant="subtle"
-              size="sm"
-            >
-              in lavorazione
-            </UBadge>
-          </div>
-          <UProgress
-            v-if="stats.partial > 0 && stats.total > 0"
-            :value="(stats.partial / stats.total) * 100"
-            color="warning"
-            size="sm"
-            :animation="false"
-          />
-        </UCard>
-
-        <!-- Recenti -->
-        <UCard>
-          <template #header>
-            <div class="flex items-center gap-2">
-              <UIcon
-                name="i-lucide-history"
-                class="w-4 h-4 text-[var(--ui-text-muted)]"
-              />
-              <span class="text-sm font-medium">Analisi Recenti</span>
-            </div>
-          </template>
-          <p class="text-sm text-[var(--ui-text-muted)] mb-4">
-            Ultime analisi eseguite
-          </p>
-          <p class="text-xl font-semibold mb-2 truncate">
-            {{ recentMicroservices.length > 0 ? recentMicroservices[0]?.name?.replace('sil-ms-', '')
-              : 'Nessuna' }}
-          </p>
-          <UButton
-            v-if="recentMicroservices.length > 0"
-            :to="`/microservice/${recentMicroservices[0]?.name}`"
-            color="neutral"
-            variant="ghost"
-            size="xs"
-            trailing-icon="i-lucide-arrow-right"
-          >
-            Visualizza dettagli
-          </UButton>
-        </UCard>
-      </div>
-
-      <!-- Microservices List -->
-      <div>
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-serif">
-            Tutti i Microservizi
-          </h2>
-          <UButton
-            icon="i-lucide-refresh-cw"
-            color="neutral"
-            variant="ghost"
-            size="xs"
-            :loading="pending"
-            @click="refresh()"
-          />
         </div>
 
-        <UCard
+        <!-- Microservices Count -->
+        <div class="bento-item bento-item--span-4 p-6 animate-slide-up stagger-2">
+          <div class="flex items-start justify-between mb-4">
+            <p class="text-xs font-semibold uppercase tracking-wider text-[var(--ui-text-muted)]">
+              Microservizi
+            </p>
+            <div class="w-10 h-10 bg-[var(--ui-bg-muted)] flex items-center justify-center">
+              <UIcon
+                name="i-lucide-boxes"
+                class="w-5 h-5 text-[var(--ui-text-muted)]"
+              />
+            </div>
+          </div>
+          <p class="text-5xl font-display mb-4">
+            {{ stats.total }}
+          </p>
+          <div class="flex items-center gap-4 text-sm">
+            <div class="flex items-center gap-2">
+              <span class="status-dot status-dot--success" />
+              <span class="text-[var(--ui-text-muted)]">{{ stats.analyzed }} analizzati</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Issues -->
+        <div class="bento-item bento-item--span-4 p-6 animate-slide-up stagger-3">
+          <div class="flex items-start justify-between mb-4">
+            <p class="text-xs font-semibold uppercase tracking-wider text-[var(--ui-text-muted)]">
+              Stato Analisi
+            </p>
+            <div class="w-10 h-10 bg-[var(--ui-bg-muted)] flex items-center justify-center">
+              <UIcon
+                name="i-lucide-activity"
+                class="w-5 h-5 text-[var(--ui-text-muted)]"
+              />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <p
+                class="text-3xl font-display"
+                :class="stats.withIssues > 0 ? 'text-[var(--ui-error)]' : ''"
+              >
+                {{ stats.withIssues }}
+              </p>
+              <p class="text-xs text-[var(--ui-text-muted)] mt-1">Con problemi</p>
+            </div>
+            <div>
+              <p
+                class="text-3xl font-display"
+                :class="stats.partial > 0 ? 'text-[var(--ui-warning)]' : ''"
+              >
+                {{ stats.partial }}
+              </p>
+              <p class="text-xs text-[var(--ui-text-muted)] mt-1">Parziali</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Microservices Table -->
+      <div class="bento-item bento-item--span-12 animate-slide-up stagger-4">
+        <div class="section-header">
+          <h2 class="section-header__title">
+            Tutti i Microservizi
+          </h2>
+          <span class="text-xs font-mono text-[var(--ui-text-dimmed)]">
+            {{ stats.total }} totali
+          </span>
+        </div>
+
+        <!-- Empty State -->
+        <div
           v-if="microservices?.length === 0"
-          class="text-center py-12"
+          class="empty-state"
         >
           <UIcon
             name="i-lucide-folder-open"
-            class="w-12 h-12 mx-auto text-[var(--ui-text-muted)] mb-4"
+            class="empty-state__icon"
           />
-          <p class="text-[var(--ui-text-muted)] mb-2">
+          <p class="empty-state__title">
             Nessun microservizio trovato
           </p>
-          <p class="text-sm text-[var(--ui-text-muted)]">
-            Configura la directory in Settings
+          <p class="empty-state__description">
+            Configura la directory nelle impostazioni
           </p>
-        </UCard>
+          <UButton
+            to="/settings"
+            color="neutral"
+            variant="soft"
+            size="sm"
+            class="mt-4"
+            icon="i-lucide-settings-2"
+          >
+            Vai alle impostazioni
+          </UButton>
+        </div>
 
-        <UCard
+        <!-- Table -->
+        <div
           v-else
-          :ui="{ body: 'p-0' }"
+          class="divide-y divide-[var(--ui-border)]"
         >
-          <div class="divide-y divide-[var(--ui-border)]">
-            <div
-              v-for="ms in microservices"
-              :key="ms.id"
-              class="p-4 hover:bg-[var(--ui-bg-elevated)] cursor-pointer transition-colors flex items-center gap-4"
-              @click="navigateTo(`/microservice/${ms.name}`)"
-            >
-              <UAvatar
-                icon="i-lucide-box"
-                size="md"
-                :ui="{ icon: 'text-[var(--ui-text-muted)]' }"
-              />
+          <!-- Header Row -->
+          <div class="grid grid-cols-12 gap-4 px-5 py-3 text-xs font-semibold uppercase tracking-wider text-[var(--ui-text-muted)] bg-[var(--ui-bg-muted)]">
+            <div class="col-span-5">Nome</div>
+            <div class="col-span-2 text-center">Documento</div>
+            <div class="col-span-3 text-center">Copertura</div>
+            <div class="col-span-2 text-right">Ultima Analisi</div>
+          </div>
 
-              <div class="flex-1 min-w-0">
-                <p class="font-medium truncate">
-                  {{ ms.name }}
-                </p>
-                <p class="text-xs text-[var(--ui-text-muted)] truncate font-mono">
-                  {{ ms.path }}
-                </p>
-              </div>
-
-              <div class="flex items-center gap-4 flex-shrink-0">
-                <!-- PDF Status -->
-                <UTooltip :text="ms.pdfFilename ? 'PDF caricato' : 'PDF mancante'">
-                  <UBadge
-                    :color="ms.pdfFilename ? 'success' : 'neutral'"
-                    :variant="ms.pdfFilename ? 'soft' : 'subtle'"
-                    :icon="ms.pdfFilename ? 'i-lucide-file-check' : 'i-lucide-file-x'"
-                    size="sm"
-                  />
-                </UTooltip>
-
-                <!-- Coverage -->
-                <div
-                  v-if="ms.hasAnalysis"
-                  class="flex items-center gap-2 w-28"
-                >
-                  <UProgress
-                    :value="ms.useCaseCount > 0 ? (ms.implementedCount / ms.useCaseCount) * 100 : 0"
-                    :color="getMicroserviceCoverageColor(ms)"
-                    size="xs"
-                    class="flex-1"
-                    :animation="false"
-                  />
-                  <span class="text-xs text-[var(--ui-text-muted)] w-10 text-right font-mono">
-                    {{ ms.implementedCount }}/{{ ms.useCaseCount }}
-                  </span>
-                </div>
-                <div
-                  v-else
-                  class="w-28 text-xs text-[var(--ui-text-muted)] text-right"
-                >
-                  -
-                </div>
-
+          <!-- Data Rows -->
+          <div
+            v-for="(ms, index) in microservices"
+            :key="ms.id"
+            class="data-row data-row--clickable grid grid-cols-12 gap-4 items-center animate-slide-in-right"
+            :style="{ animationDelay: `${index * 0.03}s` }"
+            @click="navigateTo(`/microservice/${ms.name}`)"
+          >
+            <!-- Name -->
+            <div class="col-span-5 flex items-center gap-4 min-w-0">
+              <div class="w-10 h-10 bg-[var(--ui-bg-muted)] flex items-center justify-center flex-shrink-0">
                 <UIcon
-                  name="i-lucide-chevron-right"
-                  class="w-4 h-4 text-[var(--ui-text-muted)]"
+                  name="i-lucide-box"
+                  class="w-5 h-5 text-[var(--ui-text-muted)]"
                 />
               </div>
+              <div class="min-w-0">
+                <p class="font-medium truncate">
+                  {{ ms.name.replace('sil-ms-', '') }}
+                </p>
+                <p class="text-xs text-[var(--ui-text-dimmed)] font-mono truncate">
+                  {{ ms.name }}
+                </p>
+              </div>
+            </div>
+
+            <!-- PDF Status -->
+            <div class="col-span-2 flex justify-center">
+              <span
+                class="tag"
+                :class="ms.pdfFilename ? 'tag--success' : ''"
+              >
+                <UIcon
+                  :name="ms.pdfFilename ? 'i-lucide-file-check' : 'i-lucide-file-x'"
+                  class="w-3.5 h-3.5"
+                />
+                {{ ms.pdfFilename ? 'PDF' : 'Mancante' }}
+              </span>
+            </div>
+
+            <!-- Coverage -->
+            <div class="col-span-3">
+              <div
+                v-if="ms.hasAnalysis"
+                class="flex items-center gap-3"
+              >
+                <div class="flex-1 h-2 bg-[var(--ui-bg-muted)] overflow-hidden">
+                  <div
+                    class="h-full transition-all duration-500"
+                    :class="{
+                      'bg-[var(--ui-success)]': getMicroserviceCoverage(ms) >= 80,
+                      'bg-[var(--ui-warning)]': getMicroserviceCoverage(ms) >= 50 && getMicroserviceCoverage(ms) < 80,
+                      'bg-[var(--ui-error)]': getMicroserviceCoverage(ms) < 50
+                    }"
+                    :style="{ width: `${getMicroserviceCoverage(ms)}%` }"
+                  />
+                </div>
+                <span class="text-sm font-mono w-16 text-right">
+                  {{ ms.implementedCount }}/{{ ms.useCaseCount }}
+                </span>
+              </div>
+              <span
+                v-else
+                class="text-sm text-[var(--ui-text-dimmed)]"
+              >
+                Non analizzato
+              </span>
+            </div>
+
+            <!-- Last Analysis -->
+            <div class="col-span-2 text-right">
+              <span class="text-sm font-mono text-[var(--ui-text-muted)]">
+                {{ formatDate(ms.lastAnalysis) }}
+              </span>
             </div>
           </div>
-        </UCard>
+        </div>
       </div>
     </div>
   </div>
