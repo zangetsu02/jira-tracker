@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { z } from 'zod'
-import { refDebounced } from '@vueuse/core'
-import type { FormSubmitEvent } from '@nuxt/ui'
 import type { AnalysisResult, UseCase, JiraConfig } from '~~/shared/utils/types'
+import type { IssueFormData } from './jira/IssueForm.vue'
 
 interface Props {
   result: (AnalysisResult & { usecase?: UseCase }) | null
@@ -22,78 +20,9 @@ const { data: jiraConfig } = await useFetch<JiraConfig | null>('/api/jira/config
 
 const { getStatusColor, getStatusLabel, getConfidenceColor } = useAnalysisStatus()
 
-interface JiraUser {
-  id: string
-  name: string
-  displayName: string
-  email?: string
-  avatar?: string
-}
-
-// Jira users with search
-const userSearchQuery = ref('')
-const userSearchQueryDebounced = refDebounced(userSearchQuery, 500)
-const jiraUsers = ref<JiraUser[]>([])
-const loadingUsers = ref(false)
-
-// Fetch users when search query changes
-watch(userSearchQueryDebounced, async (query) => {
-  // Only search with at least 2 characters
-  if (!query || query.length < 2) {
-    jiraUsers.value = []
-    return
-  }
-
-  loadingUsers.value = true
-  try {
-    jiraUsers.value = await $fetch<JiraUser[]>(`/api/jira/users?q=${encodeURIComponent(query)}`)
-  } catch {
-    jiraUsers.value = []
-  } finally {
-    loadingUsers.value = false
-  }
-})
-
 // Form state
 const creatingIssue = ref(false)
 const jiraError = ref<string | null>(null)
-
-// Zod schema for validation
-const schema = z.object({
-  summary: z.string().min(1, 'Il titolo e obbligatorio'),
-  description: z.string().optional(),
-  priority: z.string(),
-  assignee: z.string().optional(),
-  labels: z.array(z.string())
-})
-
-type Schema = z.output<typeof schema>
-
-const state = reactive<Schema>({
-  summary: '',
-  description: '',
-  priority: 'Medium',
-  assignee: '',
-  labels: []
-})
-
-const priorityOptions = [
-  { label: 'Highest - Critico', value: 'Highest', icon: 'i-lucide-chevrons-up' },
-  { label: 'High - Alta', value: 'High', icon: 'i-lucide-chevron-up' },
-  { label: 'Medium - Media', value: 'Medium', icon: 'i-lucide-minus' },
-  { label: 'Low - Bassa', value: 'Low', icon: 'i-lucide-chevron-down' },
-  { label: 'Lowest - Minima', value: 'Lowest', icon: 'i-lucide-chevrons-down' }
-]
-
-const userOptions = computed(() => {
-  return (jiraUsers.value || [])
-    .filter(u => u.name && u.displayName)
-    .map(u => ({
-      label: u.displayName,
-      value: u.name,
-      avatar: u.avatar ? { src: u.avatar } : undefined
-    }))
-})
 
 // Build description from result
 const buildDescription = (result: AnalysisResult & { usecase?: UseCase }, msName: string): string => {
@@ -163,23 +92,29 @@ const buildLabels = (msName: string): string[] => {
   return [msName]
 }
 
-// Initialize form when result changes
-watch(() => props.result, (result) => {
-  if (result) {
-    const msName = props.microserviceName
+// Compute initial form data
+const initialFormData = computed<Partial<IssueFormData>>(() => {
+  if (!props.result) return {}
+  
+  const msName = props.microserviceName
+  return {
+    summary: buildTitle(props.result, msName),
+    description: buildDescription(props.result, msName),
+    priority: props.result.confidence === 'high' ? 'High' : props.result.confidence === 'low' ? 'Low' : 'Medium',
+    assignee: '',
+    labels: buildLabels(msName)
+  }
+})
 
-    state.summary = buildTitle(result, msName)
-    state.description = buildDescription(result, msName)
-    state.priority = result.confidence === 'high' ? 'High' : result.confidence === 'low' ? 'Low' : 'Medium'
-    state.assignee = ''
-    state.labels = buildLabels(msName)
-
+// Reset error when modal opens
+watch(open, (isOpen) => {
+  if (isOpen) {
     jiraError.value = null
   }
-}, { immediate: true })
+})
 
 // Submit handler
-const onSubmit = async (event: FormSubmitEvent<Schema>) => {
+const handleSubmit = async (data: IssueFormData) => {
   if (!props.result) return
 
   creatingIssue.value = true
@@ -190,11 +125,11 @@ const onSubmit = async (event: FormSubmitEvent<Schema>) => {
       method: 'POST',
       body: {
         analysisResultId: props.result.id,
-        summary: event.data.summary,
-        description: event.data.description,
-        priority: event.data.priority,
-        assignee: event.data.assignee || undefined,
-        labels: event.data.labels
+        summary: data.summary,
+        description: data.description,
+        priority: data.priority,
+        assignee: data.assignee || undefined,
+        labels: data.labels
       }
     })
 
@@ -211,7 +146,7 @@ const onSubmit = async (event: FormSubmitEvent<Schema>) => {
 <template>
   <UModal
     v-model:open="open"
-    class="sm:max-w-xl"
+    class="sm:max-w-2xl"
   >
     <template #header>
       <div class="flex items-center gap-4">
@@ -281,116 +216,17 @@ const onSubmit = async (event: FormSubmitEvent<Schema>) => {
           </span>
         </div>
 
-        <!-- Form with validation -->
-        <UForm
-          :schema="schema"
-          :state="state"
-          class="space-y-5"
-          @submit="onSubmit"
-        >
-          <!-- Titolo - Full width -->
-          <UFormField
-            label="Titolo Issue"
-            name="summary"
-            required
-            class="w-full"
-          >
-            <UInput
-              v-model="state.summary"
-              placeholder="Titolo della issue"
-              size="lg"
-              autofocus
-              class="w-full"
-            />
-          </UFormField>
-
-          <!-- Priority & Assignee -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <UFormField
-              label="Priorita"
-              name="priority"
-            >
-              <USelect
-                v-model="state.priority"
-                :items="priorityOptions"
-                size="lg"
-                class="w-full"
-              />
-            </UFormField>
-
-            <UFormField
-              label="Assegnatario"
-              name="assignee"
-            >
-              <USelectMenu
-                v-model="state.assignee"
-                :search-term="userSearchQuery"
-                :items="userOptions"
-                value-key="value"
-                placeholder="Non assegnato"
-                :loading="loadingUsers"
-                size="lg"
-                searchable
-                searchable-placeholder="Cerca utente..."
-                ignore-filter
-                class="w-full"
-                @update:search-term="userSearchQuery = $event"
-              />
-            </UFormField>
-          </div>
-
-          <!-- Labels con InputTags -->
-          <UFormField
-            label="Labels"
-            name="labels"
-            class="w-full"
-          >
-            <UInputTags
-              v-model="state.labels"
-              placeholder="Aggiungi label..."
-              size="lg"
-              class="w-full"
-            />
-          </UFormField>
-
-          <!-- Description - Full width -->
-          <UFormField
-            label="Descrizione"
-            name="description"
-            hint="Formato Jira: *bold*, _italic_, h2. Header"
-            class="w-full"
-          >
-            <UTextarea
-              v-model="state.description"
-              placeholder="Descrizione della issue..."
-              :rows="10"
-              size="lg"
-              class="w-full font-mono text-sm"
-            />
-          </UFormField>
-
-          <!-- Submit buttons -->
-          <div class="flex items-center justify-end gap-3 pt-2">
-            <UButton
-              color="neutral"
-              variant="ghost"
-              size="lg"
-              type="button"
-              @click="open = false"
-            >
-              Annulla
-            </UButton>
-            <UButton
-              icon="i-lucide-send"
-              color="primary"
-              size="lg"
-              type="submit"
-              :loading="creatingIssue"
-            >
-              Crea Issue
-            </UButton>
-          </div>
-        </UForm>
+        <!-- Shared Form -->
+        <JiraIssueForm
+          :key="result.id"
+          :initial-data="initialFormData"
+          :loading="creatingIssue"
+          submit-label="Crea Issue"
+          submit-icon="i-lucide-send"
+          mode="create"
+          @submit="handleSubmit"
+          @cancel="open = false"
+        />
       </div>
     </template>
   </UModal>

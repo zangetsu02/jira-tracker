@@ -445,6 +445,146 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ============================================================================
+   ISSUE FORM STYLES
+   ============================================================================ */
+
+/* Metadata card hover effect */
+.metadata-card {
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.metadata-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  background: linear-gradient(135deg, var(--accent-soft) 0%, transparent 100%);
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.metadata-card:hover::before {
+  opacity: 1;
+}
+
+/* Edit mode highlight */
+.edit-highlight {
+  position: relative;
+  animation: editPulse 2s ease-in-out infinite;
+}
+
+@keyframes editPulse {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.3);
+  }
+  50% { 
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0);
+  }
+}
+
+/* Comment card animation */
+.comment-card {
+  animation: commentSlideIn 0.3s ease-out forwards;
+}
+
+@keyframes commentSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Issue list item selection animation */
+.issue-item {
+  position: relative;
+  transition: all 0.15s ease;
+}
+
+.issue-item::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent);
+  transform: scaleY(0);
+  transition: transform 0.2s ease;
+}
+
+.issue-item.selected::after {
+  transform: scaleY(1);
+}
+
+/* Form field focus animation */
+.form-field-animated {
+  transition: all 0.2s ease;
+}
+
+.form-field-animated:focus-within {
+  transform: translateY(-1px);
+}
+
+/* Label tag animation */
+.label-tag {
+  animation: labelPop 0.2s ease-out forwards;
+}
+
+@keyframes labelPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Button ripple effect */
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-ripple::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.3) 0%, transparent 70%);
+  transform: scale(0);
+  opacity: 0;
+  transition: all 0.4s ease;
+}
+
+.btn-ripple:active::after {
+  transform: scale(2);
+  opacity: 1;
+  transition: all 0s;
+}
+
+/* Smooth content transitions */
+.content-fade-enter-active,
+.content-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.content-fade-enter-from,
+.content-fade-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+/* ============================================================================
    UTILITIES
    ============================================================================ */
 
