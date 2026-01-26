@@ -1,110 +1,49 @@
 <script setup lang="ts">
+import type { JiraAttachmentInfo } from '~/composables/useJiraMarkup'
+
 const props = defineProps<{
   content: string | null | undefined
+  attachments?: Array<{
+    filename: string
+    content: string
+    thumbnail?: string
+    mimeType: string
+  }>
 }>()
 
-// Convert Jira markup to HTML for preview
-const convertJiraToHtml = (text: string): string => {
-  if (!text) return ''
-  
-  let html = text
-    // Escape HTML first
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-  
-  // Code block: {code}...{code} - process first to avoid inner replacements
-  html = html.replace(/\{code(?::([^}]*))?\}([\s\S]*?)\{code\}/g, (_match, lang, code) => {
-    const langLabel = lang ? `<span class="code-lang">${lang}</span>` : ''
-    return `<div class="code-block">${langLabel}<pre><code>${code.trim()}</code></pre></div>`
-  })
-  
-  // Blockquote: {quote}...{quote}
-  html = html.replace(/\{quote\}([\s\S]*?)\{quote\}/g, '<blockquote class="jira-quote">$1</blockquote>')
-  
-  // Panel: {panel}...{panel}
-  html = html.replace(/\{panel(?::([^}]*))?\}([\s\S]*?)\{panel\}/g, (_match, title, content) => {
-    const titleHtml = title ? `<div class="panel-title">${title}</div>` : ''
-    return `<div class="jira-panel">${titleHtml}<div class="panel-content">${content.trim()}</div></div>`
-  })
-  
-  // Note: {note}...{note}
-  html = html.replace(/\{note(?::([^}]*))?\}([\s\S]*?)\{note\}/g, (_match, title, content) => {
-    const titleHtml = title ? `<div class="note-title">${title}</div>` : ''
-    return `<div class="jira-note">${titleHtml}<div class="note-content">${content.trim()}</div></div>`
-  })
-  
-  // Headers: h1. h2. h3. etc (must be at start of line)
-  html = html.replace(/^h1\.\s*(.+)$/gm, '<h1>$1</h1>')
-  html = html.replace(/^h2\.\s*(.+)$/gm, '<h2>$1</h2>')
-  html = html.replace(/^h3\.\s*(.+)$/gm, '<h3>$1</h3>')
-  html = html.replace(/^h4\.\s*(.+)$/gm, '<h4>$1</h4>')
-  html = html.replace(/^h5\.\s*(.+)$/gm, '<h5>$1</h5>')
-  html = html.replace(/^h6\.\s*(.+)$/gm, '<h6>$1</h6>')
-  
-  // Bold: *text*
-  html = html.replace(/\*([^*\n]+)\*/g, '<strong>$1</strong>')
-  
-  // Italic: _text_
-  html = html.replace(/_([^_\n]+)_/g, '<em>$1</em>')
-  
-  // Strikethrough: -text- (but not ----)
-  html = html.replace(/(?<!-)-([^-\n]+)-(?!-)/g, '<del>$1</del>')
-  
-  // Underline: +text+
-  html = html.replace(/\+([^+\n]+)\+/g, '<u>$1</u>')
-  
-  // Monospace: {{text}}
-  html = html.replace(/\{\{([^}]+)\}\}/g, '<code class="inline-code">$1</code>')
-  
-  // Color: {color:red}text{color}
-  html = html.replace(/\{color:([^}]+)\}([\s\S]*?)\{color\}/g, '<span style="color: $1">$2</span>')
-  
-  // Links: [text|url] or [url]
-  html = html.replace(/\[([^\]|]+)\|([^\]]+)\]/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
-  html = html.replace(/\[((https?:\/\/|www\.)[^\]]+)\]/g, '<a href="$1" target="_blank" rel="noopener">$1</a>')
-  
-  // Bullet list: * item (at start of line)
-  html = html.replace(/^\*\s+(.+)$/gm, '<li class="bullet">$1</li>')
-  
-  // Numbered list: # item
-  html = html.replace(/^#\s+(.+)$/gm, '<li class="numbered">$1</li>')
-  
-  // Horizontal rule: ----
-  html = html.replace(/^-{4,}$/gm, '<hr />')
-  
-  // Wrap consecutive bullet items in <ul>
-  html = html.replace(/(<li class="bullet">.*?<\/li>\n?)+/g, (match) => {
-    return `<ul>${match}</ul>`
-  })
-  
-  // Wrap consecutive numbered items in <ol>
-  html = html.replace(/(<li class="numbered">.*?<\/li>\n?)+/g, (match) => {
-    return `<ol>${match}</ol>`
-  })
-  
-  // Convert double line breaks to paragraph breaks
-  html = html.replace(/\n\n+/g, '</p><p>')
-  
-  // Convert single line breaks to <br>
-  html = html.replace(/\n/g, '<br>')
-  
-  // Wrap in paragraph if not starting with block element
-  if (!html.match(/^<(h[1-6]|ul|ol|div|blockquote|pre|hr)/)) {
-    html = `<p>${html}</p>`
-  }
-  
-  // Clean up empty paragraphs
-  html = html.replace(/<p><\/p>/g, '')
-  html = html.replace(/<p>(<(h[1-6]|ul|ol|div|blockquote|pre|hr))/g, '$1')
-  html = html.replace(/(<\/(h[1-6]|ul|ol|div|blockquote|pre)>)<\/p>/g, '$1')
-  
-  return html
-}
+const { convertToHtml } = useJiraMarkup()
 
-const previewHtml = computed(() => {
-  return convertJiraToHtml(props.content || '')
+// Lightbox state
+const lightboxOpen = ref(false)
+const lightboxSrc = ref('')
+const lightboxAlt = ref('')
+
+// Build attachments map for lookup
+const attachmentsMap = computed(() => {
+  if (!props.attachments) return undefined
+  const map = new Map<string, JiraAttachmentInfo>()
+  for (const a of props.attachments) {
+    map.set(a.filename, a)
+  }
+  return map
 })
+
+const previewHtml = computed(() => convertToHtml(props.content || '', attachmentsMap.value))
+
+// Handle click on images to open lightbox
+const handleClick = (event: MouseEvent) => {
+  const target = event.target as HTMLElement
+  if (target.tagName === 'IMG' && target.classList.contains('jira-image')) {
+    const img = target as HTMLImageElement
+    // Get the full-size URL (content) instead of thumbnail
+    const filename = img.alt
+    const attachment = attachmentsMap.value?.get(filename)
+    
+    lightboxSrc.value = attachment?.content || img.src
+    lightboxAlt.value = filename || 'Image'
+    lightboxOpen.value = true
+  }
+}
 </script>
 
 <template>
@@ -112,10 +51,18 @@ const previewHtml = computed(() => {
     v-if="content"
     class="jira-preview"
     v-html="previewHtml"
+    @click="handleClick"
   />
   <p v-else class="empty-text">
     Nessuna descrizione
   </p>
+
+  <!-- Image Lightbox -->
+  <JiraImageLightbox
+    v-model:open="lightboxOpen"
+    :src="lightboxSrc"
+    :alt="lightboxAlt"
+  />
 </template>
 
 <style scoped>
@@ -334,5 +281,72 @@ const previewHtml = computed(() => {
 .jira-preview :deep(br) {
   display: block;
   content: "";
+}
+
+.jira-preview :deep(.user-mention) {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.dark .jira-preview :deep(.user-mention) {
+  background: rgba(96, 165, 250, 0.15);
+  color: #60a5fa;
+}
+
+/* Images */
+.jira-preview :deep(.jira-image) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.75rem 0;
+  border-radius: 0.5rem;
+  border: 1px solid var(--ui-border);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.jira-preview :deep(.jira-image:hover) {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.jira-preview :deep(.jira-image.thumbnail) {
+  max-width: 200px;
+  max-height: 150px;
+  object-fit: cover;
+}
+
+/* Inline images (within text) */
+.jira-preview :deep(p > .jira-image) {
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0.25rem 0.5rem 0.25rem 0;
+  max-height: 1.5em;
+  border-radius: 0.25rem;
+}
+
+/* Unresolved attachment placeholder */
+.jira-preview :deep(.jira-image[data-attachment]) {
+  min-height: 60px;
+  min-width: 120px;
+  background: linear-gradient(135deg, var(--ui-bg-muted) 0%, var(--ui-bg) 100%);
+  border: 2px dashed var(--ui-border);
+  border-radius: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  color: var(--ui-text-dimmed);
+  font-size: 0.75rem;
+}
+
+.jira-preview :deep(.jira-image[data-attachment])::before {
+  content: "Allegato: " attr(data-attachment);
 }
 </style>

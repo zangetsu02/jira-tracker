@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { JiraComment } from '~/composables/useJiraHelpers'
+import type { JiraComment, JiraAttachment } from '~/composables/useJiraHelpers'
 
 const props = defineProps<{
   comments: JiraComment[]
   loading?: boolean
+  attachments?: JiraAttachment[]
 }>()
 
 const emit = defineEmits<{
@@ -15,6 +16,7 @@ const { formatRelativeDate, formatDate } = useJiraHelpers()
 
 const newComment = ref('')
 const addingComment = ref(false)
+const showPreview = ref(false)
 
 // Comments sorted chronologically (oldest first, newest last)
 const sortedComments = computed(() => {
@@ -30,6 +32,7 @@ const handleAddComment = async () => {
   try {
     emit('add', newComment.value.trim())
     newComment.value = ''
+    showPreview.value = false
   } finally {
     addingComment.value = false
   }
@@ -103,9 +106,9 @@ defineExpose({
               </UTooltip>
             </div>
             
-            <!-- Body -->
+            <!-- Body with Jira formatting -->
             <div class="p-3 bg-neutral-100 dark:bg-neutral-800 rounded-lg rounded-tl-none">
-              <p class="text-sm text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap leading-relaxed">{{ comment.body }}</p>
+              <JiraDescriptionPreview :content="comment.body" :attachments="attachments" />
             </div>
           </div>
         </div>
@@ -117,18 +120,56 @@ defineExpose({
       <div class="flex gap-3">
         <UAvatar size="sm" class="shrink-0 mt-1" />
         <div class="flex-1 space-y-3">
-          <UTextarea
-            v-model="newComment"
-            placeholder="Scrivi un commento..."
-            :rows="3"
-            autoresize
-            :maxrows="8"
-            :disabled="addingComment"
-            class="w-full"
-          />
+          <!-- Toggle Edit/Preview -->
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs text-neutral-500 dark:text-neutral-400">Nuovo commento</span>
+            <div class="flex items-center bg-neutral-200 dark:bg-neutral-700 rounded-lg p-0.5">
+              <button
+                type="button"
+                class="px-2 py-0.5 text-xs font-medium rounded transition-all"
+                :class="!showPreview 
+                  ? 'bg-white dark:bg-neutral-600 text-neutral-900 dark:text-neutral-100 shadow-sm' 
+                  : 'text-neutral-600 dark:text-neutral-400'"
+                @click="showPreview = false"
+              >
+                Scrivi
+              </button>
+              <button
+                type="button"
+                class="px-2 py-0.5 text-xs font-medium rounded transition-all"
+                :class="showPreview 
+                  ? 'bg-white dark:bg-neutral-600 text-neutral-900 dark:text-neutral-100 shadow-sm' 
+                  : 'text-neutral-600 dark:text-neutral-400'"
+                :disabled="!newComment.trim()"
+                @click="showPreview = true"
+              >
+                Anteprima
+              </button>
+            </div>
+          </div>
+
+          <!-- Edit Mode with Mention Support -->
+          <div v-show="!showPreview">
+            <JiraMentionTextarea
+              v-model="newComment"
+              placeholder="Scrivi un commento... Usa @ per menzionare utenti"
+              :rows="3"
+              :disabled="addingComment"
+            />
+          </div>
+
+          <!-- Preview Mode -->
+          <div 
+            v-show="showPreview" 
+            class="min-h-[4.5rem] p-3 bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 rounded-lg"
+          >
+            <JiraDescriptionPreview v-if="newComment.trim()" :content="newComment" />
+            <p v-else class="text-sm text-neutral-400 italic">Nessun contenuto</p>
+          </div>
+
           <div class="flex items-center justify-between">
             <p class="text-xs text-neutral-400 dark:text-neutral-500">
-              Premi Ctrl+Invio per inviare
+              @ per menzionare · *grassetto* · _corsivo_
             </p>
             <UButton
               color="primary"
@@ -138,7 +179,7 @@ defineExpose({
               :disabled="!newComment.trim()"
               @click="handleAddComment"
             >
-              Invia commento
+              Invia
             </UButton>
           </div>
         </div>

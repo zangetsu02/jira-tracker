@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { JiraIssue, JiraComment, JiraCommentsResponse } from '~/composables/useJiraHelpers'
+import type { JiraIssue, JiraComment, JiraCommentsResponse, JiraAttachment } from '~/composables/useJiraHelpers'
 import type { IssueFormData } from './IssueForm.vue'
 
 const props = defineProps<{
@@ -33,6 +33,9 @@ const saveError = ref<string | null>(null)
 const comments = ref<JiraComment[]>([])
 const loadingComments = ref(false)
 const commentsRef = ref<InstanceType<typeof import('./IssueComments.vue').default> | null>(null)
+
+// Attachments - derived from issue prop (no separate API call needed)
+const attachments = computed<JiraAttachment[]>(() => props.issue?.attachments || [])
 
 // Form data for edit mode
 const editFormData = computed<Partial<IssueFormData>>(() => {
@@ -300,7 +303,7 @@ const handleFormSubmit = async (data: IssueFormData) => {
                 Descrizione
               </h3>
               <div class="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700">
-                <JiraDescriptionPreview :content="issue.description" />
+                <JiraDescriptionPreview :content="issue.description" :attachments="attachments" />
               </div>
             </div>
 
@@ -323,6 +326,7 @@ const handleFormSubmit = async (data: IssueFormData) => {
               ref="commentsRef"
               :comments="comments"
               :loading="loadingComments"
+              :attachments="attachments"
               @refresh="refreshComments"
               @add="handleAddComment"
             />

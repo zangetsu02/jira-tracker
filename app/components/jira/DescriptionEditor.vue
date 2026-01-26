@@ -13,91 +13,6 @@ const modelValue = defineModel<string>({ default: '' })
 // View mode: 'edit' or 'preview'
 const viewMode = ref<'edit' | 'preview'>('edit')
 
-// Convert Jira markup to HTML for preview
-const convertJiraToHtml = (text: string): string => {
-  if (!text) return '<p class="text-neutral-400 italic">Nessuna descrizione</p>'
-  
-  let html = text
-    // Escape HTML first
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    
-    // Headers: h1. h2. h3. etc
-    .replace(/^h1\.\s*(.+)$/gm, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>')
-    .replace(/^h2\.\s*(.+)$/gm, '<h2 class="text-xl font-semibold mt-4 mb-2">$1</h2>')
-    .replace(/^h3\.\s*(.+)$/gm, '<h3 class="text-lg font-semibold mt-3 mb-2">$1</h3>')
-    .replace(/^h4\.\s*(.+)$/gm, '<h4 class="text-base font-semibold mt-3 mb-1">$1</h4>')
-    .replace(/^h5\.\s*(.+)$/gm, '<h5 class="text-sm font-semibold mt-2 mb-1">$1</h5>')
-    .replace(/^h6\.\s*(.+)$/gm, '<h6 class="text-sm font-medium mt-2 mb-1">$1</h6>')
-    
-    // Bold: *text*
-    .replace(/\*([^*\n]+)\*/g, '<strong class="font-semibold">$1</strong>')
-    
-    // Italic: _text_
-    .replace(/_([^_\n]+)_/g, '<em class="italic">$1</em>')
-    
-    // Strikethrough: -text-
-    .replace(/-([^-\n]+)-/g, '<del class="line-through">$1</del>')
-    
-    // Underline: +text+
-    .replace(/\+([^+\n]+)\+/g, '<u class="underline">$1</u>')
-    
-    // Monospace: {{text}}
-    .replace(/\{\{([^}]+)\}\}/g, '<code class="px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-800 rounded text-sm font-mono">$1</code>')
-    
-    // Code block: {code}...{code}
-    .replace(/\{code(?::([^}]*))?\}([\s\S]*?)\{code\}/g, (_match, _lang, code) => {
-      return `<pre class="p-3 bg-neutral-100 dark:bg-neutral-800 rounded-lg overflow-x-auto my-2"><code class="text-sm font-mono">${code.trim()}</code></pre>`
-    })
-    
-    // Blockquote: {quote}...{quote}
-    .replace(/\{quote\}([\s\S]*?)\{quote\}/g, '<blockquote class="border-l-4 border-neutral-300 dark:border-neutral-600 pl-4 my-2 italic text-neutral-600 dark:text-neutral-400">$1</blockquote>')
-    
-    // Panel/Note: {panel}...{panel} or {note}...{note}
-    .replace(/\{(panel|note)(?::([^}]*))?\}([\s\S]*?)\{\1\}/g, (_match, _type, title, content) => {
-      const titleHtml = title ? `<div class="font-semibold mb-1">${title}</div>` : ''
-      return `<div class="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg my-2">${titleHtml}${content.trim()}</div>`
-    })
-    
-    // Color: {color:red}text{color}
-    .replace(/\{color:([^}]+)\}([\s\S]*?)\{color\}/g, '<span style="color: $1">$2</span>')
-    
-    // Links: [text|url] or [url]
-    .replace(/\[([^\]|]+)\|([^\]]+)\]/g, '<a href="$2" class="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener">$1</a>')
-    .replace(/\[([^\]]+)\]/g, '<a href="$1" class="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener">$1</a>')
-    
-    // Bullet list: * item or - item
-    .replace(/^[\*\-]\s+(.+)$/gm, '<li class="ml-4">$1</li>')
-    
-    // Numbered list: # item
-    .replace(/^#\s+(.+)$/gm, '<li class="ml-4 list-decimal">$1</li>')
-    
-    // Horizontal rule: ----
-    .replace(/^-{4,}$/gm, '<hr class="my-4 border-neutral-300 dark:border-neutral-600" />')
-    
-    // Line breaks
-    .replace(/\n\n/g, '</p><p class="my-2">')
-    .replace(/\n/g, '<br />')
-  
-  // Wrap in paragraph if not already wrapped
-  if (!html.startsWith('<')) {
-    html = `<p class="my-2">${html}</p>`
-  }
-  
-  // Wrap consecutive <li> in <ul>
-  html = html.replace(/(<li[^>]*>.*?<\/li>\s*)+/g, (match) => {
-    if (match.includes('list-decimal')) {
-      return `<ol class="list-decimal my-2">${match}</ol>`
-    }
-    return `<ul class="list-disc my-2">${match}</ul>`
-  })
-  
-  return html
-}
-
-const previewHtml = computed(() => convertJiraToHtml(modelValue.value))
-
 // Toolbar actions
 const insertFormatting = (before: string, after: string = before) => {
   const textarea = document.querySelector('.jira-description-textarea') as HTMLTextAreaElement
@@ -201,13 +116,15 @@ const toolbarItems = [
         :class="{ 'opacity-50 cursor-not-allowed': disabled }"
       />
       
-      <!-- Preview mode -->
+      <!-- Preview mode - using shared component -->
       <div
         v-show="viewMode === 'preview'"
-        class="w-full p-4 bg-white dark:bg-neutral-900 overflow-y-auto prose prose-sm dark:prose-invert max-w-none"
+        class="w-full p-4 bg-white dark:bg-neutral-900 overflow-y-auto"
         :style="{ minHeight: `${rows * 1.5}rem` }"
-        v-html="previewHtml"
-      />
+      >
+        <JiraDescriptionPreview v-if="modelValue" :content="modelValue" />
+        <p v-else class="text-sm text-neutral-400 dark:text-neutral-500 italic">Nessuna descrizione</p>
+      </div>
     </div>
     
     <!-- Footer with help -->
@@ -240,45 +157,5 @@ const toolbarItems = [
 .jira-description-textarea {
   font-family: var(--font-mono), ui-monospace, monospace;
   line-height: 1.6;
-}
-
-.jira-description-editor :deep(.prose) {
-  font-family: var(--font-sans), system-ui, sans-serif;
-}
-
-.jira-description-editor :deep(.prose h1),
-.jira-description-editor :deep(.prose h2),
-.jira-description-editor :deep(.prose h3),
-.jira-description-editor :deep(.prose h4) {
-  color: var(--ui-text);
-}
-
-.jira-description-editor :deep(.prose p) {
-  margin-top: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.jira-description-editor :deep(.prose ul),
-.jira-description-editor :deep(.prose ol) {
-  padding-left: 1.5rem;
-}
-
-.jira-description-editor :deep(.prose li) {
-  margin-top: 0.25rem;
-  margin-bottom: 0.25rem;
-}
-
-.jira-description-editor :deep(.prose code) {
-  font-size: 0.875em;
-}
-
-.jira-description-editor :deep(.prose pre) {
-  margin-top: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-.jira-description-editor :deep(.prose blockquote) {
-  font-style: italic;
-  border-left-width: 4px;
 }
 </style>

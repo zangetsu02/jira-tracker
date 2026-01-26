@@ -5,6 +5,16 @@ export interface JiraUser {
     avatarUrl?: string
 }
 
+export interface JiraAttachment {
+    id: string
+    filename: string
+    mimeType: string
+    size: number
+    content: string
+    thumbnail?: string
+    created: string
+}
+
 export interface JiraIssue {
     key: string
     url: string
@@ -19,6 +29,7 @@ export interface JiraIssue {
     updated: string
     created: string
     issueType?: string
+    attachments?: JiraAttachment[]
 }
 
 export interface JiraComment {
