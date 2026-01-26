@@ -9,7 +9,7 @@ let dbInstance: NodePgDatabase<typeof schema>
 
 const getDBInstance = (): NodePgDatabase<typeof schema> => {
   if (!dbInstance) {
-    dbInstance = drizzle({ client: getPgPool(), schema })
+    dbInstance = drizzle(getPgPool(), { schema })
   }
   return dbInstance
 }

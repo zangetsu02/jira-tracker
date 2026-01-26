@@ -235,6 +235,17 @@ export class JiraClient {
   buildIssueUrl(issueKey: string): string {
     return `${this.baseUrl}/browse/${issueKey}`
   }
+
+  async getComments(issueKey: string): Promise<JiraCommentsResult> {
+    return this.request(`/rest/api/2/issue/${issueKey}/comment?orderBy=-created`)
+  }
+
+  async addComment(issueKey: string, body: string): Promise<JiraComment> {
+    return this.request(`/rest/api/2/issue/${issueKey}/comment`, {
+      method: 'POST',
+      body: JSON.stringify({ body })
+    })
+  }
 }
 
 export interface JiraSearchResult {
@@ -263,6 +274,27 @@ export interface UpdateIssueParams {
   assignee?: string | null
 }
 
-export function createJiraClient(config: JiraConfig): JiraClient {
+export interface JiraComment {
+  id: string
+  self: string
+  body: string
+  author: {
+    accountId?: string
+    name?: string
+    displayName: string
+    avatarUrls?: Record<string, string>
+  }
+  created: string
+  updated: string
+}
+
+export interface JiraCommentsResult {
+  startAt: number
+  maxResults: number
+  total: number
+  comments: JiraComment[]
+}
+
+export function createJiraClient(config: JiraClientConfig): JiraClient {
   return new JiraClient(config)
 }
