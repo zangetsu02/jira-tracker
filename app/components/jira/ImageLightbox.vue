@@ -44,7 +44,7 @@ onUnmounted(() => {
         <!-- Close button -->
         <button
           type="button"
-          class="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+          class="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 text-white transition-colors"
           @click="close"
         >
           <UIcon name="i-lucide-x" class="w-6 h-6" />
@@ -63,11 +63,11 @@ onUnmounted(() => {
             <img
               :src="src"
               :alt="alt || 'Image'"
-              class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+              class="max-w-full max-h-[90vh] object-contain shadow-2xl border border-white/10"
             />
             
             <!-- Alt text / filename -->
-            <p v-if="alt" class="absolute -bottom-8 left-0 right-0 text-center text-sm text-white/70">
+            <p v-if="alt" class="absolute -bottom-8 left-0 right-0 text-center text-sm text-white/70 font-mono">
               {{ alt }}
             </p>
           </div>

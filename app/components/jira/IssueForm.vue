@@ -193,7 +193,7 @@ defineExpose({ reset })
           class="w-full"
         >
           <template #empty>
-            <span class="text-neutral-500 text-sm px-2 py-1">
+            <span class="text-[var(--ui-text-muted)] text-sm px-2 py-1">
               {{ userSearchQuery.length < 2 ? 'Digita almeno 2 caratteri...' : 'Nessun utente trovato' }}
             </span>
           </template>
@@ -230,7 +230,7 @@ defineExpose({ reset })
     </UFormField>
 
     <!-- Actions -->
-    <div class="flex items-center justify-end gap-3 pt-4 border-t border-neutral-200 dark:border-neutral-800">
+    <div class="flex items-center justify-end gap-3 pt-4 border-t border-[var(--ui-border)]">
       <UButton
         v-if="showCancel"
         color="neutral"

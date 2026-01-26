@@ -145,13 +145,13 @@ const hasActiveFilters = computed(() => labelFilter.value || assigneeFilter.valu
     <header class="shrink-0 mb-6">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
-          <div class="w-12 h-12 rounded-xl bg-blue-500 dark:bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-            <UIcon name="i-simple-icons-jira" class="w-6 h-6 text-white" />
+          <div class="w-12 h-12 bg-[var(--ui-bg-accented)] flex items-center justify-center">
+            <UIcon name="i-simple-icons-jira" class="w-6 h-6 text-[var(--ui-text)]" />
           </div>
           <div>
             <h1 class="text-2xl font-semibold">Jira Issues</h1>
-            <p class="text-sm text-neutral-500 dark:text-neutral-400">
-              <span class="font-medium text-neutral-900 dark:text-neutral-100">{{ filteredIssues.length }}</span>
+            <p class="text-sm text-[var(--ui-text-muted)]">
+              <span class="font-medium text-[var(--ui-text)]">{{ filteredIssues.length }}</span>
               di {{ issuesData?.total || 0 }} issue
             </p>
           </div>

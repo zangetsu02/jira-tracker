@@ -816,7 +816,7 @@ const formatDate = (date: string | null) => {
           </button>
         </div>
         <div class="p-4 bg-[#0a0a0a] max-h-64 overflow-y-auto">
-          <pre class="text-xs text-blue-400 font-mono whitespace-pre-wrap leading-relaxed">{{ extractionOutput }}</pre>
+          <pre class="text-xs text-[var(--ui-text-muted)] font-mono whitespace-pre-wrap leading-relaxed">{{ extractionOutput }}</pre>
         </div>
       </div>
 

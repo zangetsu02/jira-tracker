@@ -46,8 +46,8 @@ defineExpose({
   <div class="space-y-5">
     <!-- Header -->
     <div class="flex items-center justify-between">
-      <h3 class="text-sm font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
-        <UIcon name="i-lucide-message-square" class="w-4 h-4 text-neutral-500" />
+      <h3 class="text-sm font-semibold text-[var(--ui-text)] flex items-center gap-2">
+        <UIcon name="i-lucide-message-square" class="w-4 h-4 text-[var(--ui-text-muted)]" />
         Commenti
         <UBadge v-if="comments.length" color="neutral" variant="subtle" size="xs">
           {{ comments.length }}
@@ -69,10 +69,10 @@ defineExpose({
       <USkeleton v-for="i in 2" :key="i" class="h-24 w-full rounded-xl" />
     </div>
 
-    <div v-else-if="comments.length === 0" class="text-center py-10 bg-neutral-50 dark:bg-neutral-800/30 rounded-xl">
-      <UIcon name="i-lucide-message-square-dashed" class="w-12 h-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
-      <p class="text-sm font-medium text-neutral-500 dark:text-neutral-400">Nessun commento</p>
-      <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">Aggiungi il primo commento qui sotto</p>
+    <div v-else-if="comments.length === 0" class="text-center py-10 bg-[var(--ui-bg-muted)]">
+      <UIcon name="i-lucide-message-square-dashed" class="w-12 h-12 text-[var(--ui-text-dimmed)] mx-auto mb-3" />
+      <p class="text-sm font-medium text-[var(--ui-text-muted)]">Nessun commento</p>
+      <p class="text-xs text-[var(--ui-text-dimmed)] mt-1">Aggiungi il primo commento qui sotto</p>
     </div>
 
     <div v-else class="space-y-4 max-h-[400px] overflow-y-auto pr-2">
@@ -94,18 +94,18 @@ defineExpose({
           <div class="flex-1 min-w-0">
             <!-- Header -->
             <div class="flex items-baseline gap-2 mb-1.5">
-              <span class="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+              <span class="text-sm font-medium text-[var(--ui-text)]">
                 {{ comment.author.displayName }}
               </span>
               <UTooltip :text="formatDate(comment.created)">
-                <span class="text-xs text-neutral-400 dark:text-neutral-500">
+                <span class="text-xs text-[var(--ui-text-dimmed)]">
                   {{ formatRelativeDate(comment.created) }}
                 </span>
               </UTooltip>
             </div>
             
             <!-- Body with Jira formatting -->
-            <div class="p-3 bg-neutral-100 dark:bg-neutral-800 rounded-lg rounded-tl-none">
+            <div class="p-3 bg-[var(--ui-bg-muted)] border border-[var(--ui-border)]">
               <JiraDescriptionPreview :content="comment.body" :attachments="attachments" />
             </div>
           </div>
@@ -114,12 +114,12 @@ defineExpose({
     </div>
 
     <!-- Add Comment Form -->
-    <div class="pt-4 border-t border-neutral-200 dark:border-neutral-700">
+    <div class="pt-4 border-t border-[var(--ui-border)]">
       <div class="flex gap-3">
         <UAvatar size="sm" class="shrink-0 mt-1" />
         <div class="flex-1 space-y-3">
           <div class="flex items-center justify-between mb-1">
-            <span class="text-xs font-medium text-neutral-600 dark:text-neutral-400">Nuovo commento</span>
+            <span class="text-xs font-medium text-[var(--ui-text-muted)]">Nuovo commento</span>
           </div>
 
           <!-- Comment Editor with toolbar -->

@@ -150,10 +150,10 @@ const handleSubmit = async (data: IssueFormData) => {
   >
     <template #header>
       <div class="flex items-center gap-4">
-        <div class="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center shrink-0">
+        <div class="w-10 h-10 bg-[var(--ui-bg-muted)] flex items-center justify-center shrink-0">
           <UIcon
             name="i-simple-icons-jira"
-            class="w-5 h-5 text-blue-500"
+            class="w-5 h-5 text-[var(--ui-text-muted)]"
           />
         </div>
         <div class="min-w-0 flex-1">

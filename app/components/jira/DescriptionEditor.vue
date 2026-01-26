@@ -55,9 +55,9 @@ const toolbarItems = [
 </script>
 
 <template>
-  <div class="jira-description-editor border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
+  <div class="jira-description-editor border border-[var(--ui-border)] overflow-hidden">
     <!-- Toolbar -->
-    <div class="flex items-center gap-1 px-2 py-1.5 bg-neutral-50 dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-neutral-700">
+    <div class="flex items-center gap-1 px-2 py-1.5 bg-[var(--ui-bg-muted)] border-b border-[var(--ui-border)]">
       <!-- Formatting buttons -->
       <template v-for="(item, index) in toolbarItems" :key="index">
         <USeparator v-if="item.type === 'separator'" orientation="vertical" class="h-5 mx-1" />
@@ -77,13 +77,13 @@ const toolbarItems = [
       <div class="flex-1" />
       
       <!-- View mode toggle -->
-      <div class="flex items-center bg-neutral-200 dark:bg-neutral-700 rounded-lg p-0.5">
+      <div class="flex items-center bg-[var(--ui-bg-accent)] p-0.5">
         <button
           type="button"
-          class="px-3 py-1 text-xs font-medium rounded-md transition-all"
+          class="px-3 py-1 text-xs font-medium transition-all"
           :class="viewMode === 'edit' 
-            ? 'bg-white dark:bg-neutral-600 text-neutral-900 dark:text-neutral-100 shadow-sm' 
-            : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200'"
+            ? 'bg-[var(--ui-bg-elevated)] text-[var(--ui-text)] shadow-sm' 
+            : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'"
           @click="viewMode = 'edit'"
         >
           <UIcon name="i-lucide-pencil" class="w-3.5 h-3.5 mr-1 inline-block" />
@@ -91,10 +91,10 @@ const toolbarItems = [
         </button>
         <button
           type="button"
-          class="px-3 py-1 text-xs font-medium rounded-md transition-all"
+          class="px-3 py-1 text-xs font-medium transition-all"
           :class="viewMode === 'preview' 
-            ? 'bg-white dark:bg-neutral-600 text-neutral-900 dark:text-neutral-100 shadow-sm' 
-            : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200'"
+            ? 'bg-[var(--ui-bg-elevated)] text-[var(--ui-text)] shadow-sm' 
+            : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'"
           @click="viewMode = 'preview'"
         >
           <UIcon name="i-lucide-eye" class="w-3.5 h-3.5 mr-1 inline-block" />
@@ -112,30 +112,30 @@ const toolbarItems = [
         :placeholder="placeholder"
         :rows="rows"
         :disabled="disabled"
-        class="jira-description-textarea w-full p-4 bg-white dark:bg-neutral-900 text-sm font-mono resize-none focus:outline-none focus:ring-0 border-0"
+        class="jira-description-textarea w-full p-4 bg-[var(--ui-bg-elevated)] text-sm text-[var(--ui-text)] placeholder-[var(--ui-text-dimmed)] resize-none focus:outline-none border-0"
         :class="{ 'opacity-50 cursor-not-allowed': disabled }"
       />
       
       <!-- Preview mode - using shared component -->
       <div
         v-show="viewMode === 'preview'"
-        class="w-full p-4 bg-white dark:bg-neutral-900 overflow-y-auto"
+        class="w-full p-4 bg-[var(--ui-bg-elevated)] overflow-y-auto"
         :style="{ minHeight: `${rows * 1.5}rem` }"
       >
         <JiraDescriptionPreview v-if="modelValue" :content="modelValue" />
-        <p v-else class="text-sm text-neutral-400 dark:text-neutral-500 italic">Nessuna descrizione</p>
+        <p v-else class="text-sm text-[var(--ui-text-dimmed)] italic">Nessuna descrizione</p>
       </div>
     </div>
     
     <!-- Footer with help -->
-    <div class="px-3 py-2 bg-neutral-50 dark:bg-neutral-800/50 border-t border-neutral-200 dark:border-neutral-700">
-      <div class="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
+    <div class="px-3 py-2 bg-[var(--ui-bg-muted)] border-t border-[var(--ui-border)]">
+      <div class="flex items-center justify-between text-xs text-[var(--ui-text-muted)]">
         <span>
           Sintassi Jira: 
-          <code class="px-1 bg-neutral-200 dark:bg-neutral-700 rounded">*grassetto*</code>
-          <code class="px-1 bg-neutral-200 dark:bg-neutral-700 rounded ml-1">_corsivo_</code>
-          <code class="px-1 bg-neutral-200 dark:bg-neutral-700 rounded ml-1">h2. Titolo</code>
-          <code class="px-1 bg-neutral-200 dark:bg-neutral-700 rounded ml-1">{code}...{code}</code>
+          <code class="px-1 bg-[var(--ui-bg-accent)]">*grassetto*</code>
+          <code class="px-1 bg-[var(--ui-bg-accent)] ml-1">_corsivo_</code>
+          <code class="px-1 bg-[var(--ui-bg-accent)] ml-1">h2. Titolo</code>
+          <code class="px-1 bg-[var(--ui-bg-accent)] ml-1">{code}...{code}</code>
         </span>
         <UButton
           v-if="viewMode === 'edit'"

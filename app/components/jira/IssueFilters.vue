@@ -25,7 +25,7 @@ const hasActiveFilters = computed(() => labelFilter.value || assigneeFilter.valu
 </script>
 
 <template>
-  <div class="shrink-0 p-4 space-y-4 border-b border-neutral-200 dark:border-neutral-800">
+  <div class="shrink-0 p-4 space-y-4 border-b border-[var(--ui-border)]">
     <UInput
       v-model="searchQuery"
       placeholder="Cerca per chiave, titolo..."
@@ -54,7 +54,7 @@ const hasActiveFilters = computed(() => labelFilter.value || assigneeFilter.valu
         class="flex-1"
       >
         <template #empty>
-          <span class="text-neutral-500 dark:text-neutral-400">Nessuna label</span>
+          <span class="text-[var(--ui-text-muted)]">Nessuna label</span>
         </template>
       </USelectMenu>
       <USelectMenu
@@ -66,7 +66,7 @@ const hasActiveFilters = computed(() => labelFilter.value || assigneeFilter.valu
         class="flex-1"
       >
         <template #empty>
-          <span class="text-neutral-500 dark:text-neutral-400">Nessun assegnatario</span>
+          <span class="text-[var(--ui-text-muted)]">Nessun assegnatario</span>
         </template>
       </USelectMenu>
     </div>
@@ -74,11 +74,11 @@ const hasActiveFilters = computed(() => labelFilter.value || assigneeFilter.valu
     <!-- Active Filters Indicator -->
     <div v-if="hasActiveFilters" class="flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <UBadge v-if="labelFilter" color="info" variant="subtle" class="gap-1">
+        <UBadge v-if="labelFilter" color="neutral" variant="subtle" class="gap-1">
           <UIcon name="i-lucide-tag" class="w-3 h-3" />
           {{ labelFilter }}
         </UBadge>
-        <UBadge v-if="assigneeFilter" color="info" variant="subtle" class="gap-1">
+        <UBadge v-if="assigneeFilter" color="neutral" variant="subtle" class="gap-1">
           <UIcon name="i-lucide-user" class="w-3 h-3" />
           {{ assigneeFilter }}
         </UBadge>

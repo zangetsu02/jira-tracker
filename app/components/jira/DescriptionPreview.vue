@@ -156,29 +156,21 @@ const handleClick = (event: MouseEvent) => {
 }
 
 .jira-preview :deep(a) {
-  color: #2563eb;
+  color: var(--accent);
   text-decoration: none;
+  transition: opacity 0.15s ease;
 }
 
 .jira-preview :deep(a:hover) {
-  text-decoration: underline;
-}
-
-.dark .jira-preview :deep(a) {
-  color: #60a5fa;
+  opacity: 0.8;
 }
 
 .jira-preview :deep(.inline-code) {
   padding: 0.125rem 0.375rem;
   background: var(--ui-bg-muted);
-  border-radius: 0.25rem;
   font-family: var(--font-mono), monospace;
   font-size: 0.8125rem;
-  color: #db2777;
-}
-
-.dark .jira-preview :deep(.inline-code) {
-  color: #f472b6;
+  color: var(--accent);
 }
 
 .jira-preview :deep(.code-block) {
@@ -189,7 +181,7 @@ const handleClick = (event: MouseEvent) => {
 .jira-preview :deep(.code-block pre) {
   padding: 1rem;
   background: var(--ui-bg-muted);
-  border-radius: 0.5rem;
+  border: 1px solid var(--ui-border);
   overflow-x: auto;
 }
 
@@ -211,9 +203,8 @@ const handleClick = (event: MouseEvent) => {
 .jira-preview :deep(.jira-quote) {
   margin: 0.75rem 0;
   padding: 0.75rem 1rem;
-  border-left: 4px solid #3b82f6;
-  background: rgba(59, 130, 246, 0.08);
-  border-radius: 0 0.375rem 0.375rem 0;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
   font-style: italic;
   color: var(--ui-text-muted);
 }
@@ -221,39 +212,29 @@ const handleClick = (event: MouseEvent) => {
 .jira-preview :deep(.jira-panel) {
   margin: 0.75rem 0;
   padding: 1rem;
-  background: rgba(59, 130, 246, 0.08);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: 0.5rem;
+  background: var(--accent-soft);
+  border: 1px solid var(--ui-border);
 }
 
 .jira-preview :deep(.jira-panel .panel-title) {
   font-weight: 600;
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
-  color: #2563eb;
-}
-
-.dark .jira-preview :deep(.jira-panel .panel-title) {
-  color: #60a5fa;
+  color: var(--accent);
 }
 
 .jira-preview :deep(.jira-note) {
   margin: 0.75rem 0;
   padding: 1rem;
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.2);
-  border-radius: 0.5rem;
+  background: var(--ui-warning-soft);
+  border: 1px solid var(--ui-border);
 }
 
 .jira-preview :deep(.jira-note .note-title) {
   font-weight: 600;
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
-  color: #d97706;
-}
-
-.dark .jira-preview :deep(.jira-note .note-title) {
-  color: #fbbf24;
+  color: var(--ui-warning);
 }
 
 .jira-preview :deep(ul) {
@@ -287,16 +268,10 @@ const handleClick = (event: MouseEvent) => {
   display: inline-flex;
   align-items: center;
   padding: 0.125rem 0.5rem;
-  background: rgba(59, 130, 246, 0.1);
-  color: #2563eb;
-  border-radius: 9999px;
+  background: var(--accent-soft);
+  color: var(--accent);
   font-size: 0.8125rem;
   font-weight: 500;
-}
-
-.dark .jira-preview :deep(.user-mention) {
-  background: rgba(96, 165, 250, 0.15);
-  color: #60a5fa;
 }
 
 /* Images */

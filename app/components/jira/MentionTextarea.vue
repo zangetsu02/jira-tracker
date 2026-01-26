@@ -186,7 +186,7 @@ watch(textareaRef, (el) => {
       :placeholder="placeholder"
       :rows="rows"
       :disabled="disabled"
-      class="w-full px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+      class="w-full px-3 py-2 bg-[var(--ui-bg-elevated)] border border-[var(--ui-border)] text-sm text-[var(--ui-text)] placeholder-[var(--ui-text-dimmed)] resize-none focus:outline-none focus:border-[var(--accent)] transition-all"
       :class="{ 'opacity-50 cursor-not-allowed': disabled }"
       @input="handleInput"
       @keydown="handleKeydown"
@@ -204,24 +204,24 @@ watch(textareaRef, (el) => {
       <div
         v-if="showMentions"
         ref="mentionListRef"
-        class="absolute z-50 bottom-full left-0 mb-1 w-72 max-h-48 overflow-y-auto bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg"
+        class="absolute z-50 bottom-full left-0 mb-1 w-72 max-h-48 overflow-y-auto bg-[var(--ui-bg-elevated)] border border-[var(--ui-border)] shadow-[var(--shadow-lg)]"
       >
         <!-- Loading -->
         <div v-if="loadingUsers" class="p-3 text-center">
-          <UIcon name="i-lucide-loader-2" class="w-5 h-5 animate-spin text-blue-500 mx-auto" />
-          <p class="text-xs text-neutral-500 mt-1">Ricerca utenti...</p>
+          <UIcon name="i-lucide-loader-2" class="w-5 h-5 animate-spin text-[var(--accent)] mx-auto" />
+          <p class="text-xs text-[var(--ui-text-muted)] mt-1">Ricerca utenti...</p>
         </div>
         
         <!-- No results -->
         <div v-else-if="users.length === 0 && mentionQuery.length > 0" class="p-3 text-center">
-          <UIcon name="i-lucide-user-x" class="w-5 h-5 text-neutral-400 mx-auto" />
-          <p class="text-xs text-neutral-500 mt-1">Nessun utente trovato</p>
+          <UIcon name="i-lucide-user-x" class="w-5 h-5 text-[var(--ui-text-dimmed)] mx-auto" />
+          <p class="text-xs text-[var(--ui-text-muted)] mt-1">Nessun utente trovato</p>
         </div>
         
         <!-- Hint to type -->
         <div v-else-if="users.length === 0" class="p-3 text-center">
-          <UIcon name="i-lucide-at-sign" class="w-5 h-5 text-neutral-400 mx-auto" />
-          <p class="text-xs text-neutral-500 mt-1">Digita per cercare utenti...</p>
+          <UIcon name="i-lucide-at-sign" class="w-5 h-5 text-[var(--ui-text-dimmed)] mx-auto" />
+          <p class="text-xs text-[var(--ui-text-muted)] mt-1">Digita per cercare utenti...</p>
         </div>
         
         <!-- User list -->
@@ -230,8 +230,8 @@ watch(textareaRef, (el) => {
             v-for="(user, index) in users"
             :key="user.accountId || user.name"
             type="button"
-            class="w-full px-3 py-2 flex items-center gap-3 text-left hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
-            :class="{ 'selected bg-blue-50 dark:bg-blue-900/30': index === selectedIndex }"
+            class="w-full px-3 py-2 flex items-center gap-3 text-left hover:bg-[var(--ui-bg-muted)] transition-colors"
+            :class="{ 'selected bg-[var(--accent-soft)]': index === selectedIndex }"
             @click="selectUser(user)"
             @mouseenter="selectedIndex = index"
           >
@@ -241,10 +241,10 @@ watch(textareaRef, (el) => {
               size="xs"
             />
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate">
+              <p class="text-sm font-medium text-[var(--ui-text)] truncate">
                 {{ user.displayName }}
               </p>
-              <p v-if="user.name" class="text-xs text-neutral-500 truncate">
+              <p v-if="user.name" class="text-xs text-[var(--ui-text-muted)] truncate">
                 @{{ user.name }}
               </p>
             </div>

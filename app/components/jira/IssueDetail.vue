@@ -138,18 +138,18 @@ const handleFormSubmit = async (data: IssueFormData) => {
     <!-- Loading -->
     <div v-if="loading" class="flex-1 flex items-center justify-center">
       <div class="text-center">
-        <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin text-blue-500 mb-2" />
-        <p class="text-sm text-neutral-500 dark:text-neutral-400">Caricamento...</p>
+        <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin text-[var(--ui-text-muted)] mb-2" />
+        <p class="text-sm text-[var(--ui-text-muted)]">Caricamento...</p>
       </div>
     </div>
 
     <!-- Empty State -->
     <div v-else-if="!issue" class="flex-1 flex flex-col items-center justify-center p-8">
-      <div class="w-20 h-20 rounded-2xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-4">
-        <UIcon name="i-lucide-file-text" class="w-10 h-10 text-neutral-400 dark:text-neutral-500" />
+      <div class="w-20 h-20 bg-[var(--ui-bg-muted)] flex items-center justify-center mb-4">
+        <UIcon name="i-lucide-file-text" class="w-10 h-10 text-[var(--ui-text-dimmed)]" />
       </div>
-      <p class="text-lg font-medium text-neutral-600 dark:text-neutral-400">Seleziona una issue</p>
-      <p class="text-sm text-neutral-500 dark:text-neutral-500 mt-1">
+      <p class="text-lg font-medium text-[var(--ui-text-muted)]">Seleziona una issue</p>
+      <p class="text-sm text-[var(--ui-text-dimmed)] mt-1">
         Clicca su una issue dalla lista per vedere i dettagli
       </p>
     </div>
@@ -157,14 +157,14 @@ const handleFormSubmit = async (data: IssueFormData) => {
     <!-- Issue Detail -->
     <template v-else>
       <!-- Header -->
-      <div class="shrink-0 border-b border-neutral-200 dark:border-neutral-800">
+      <div class="shrink-0 border-b border-[var(--ui-border)]">
         <!-- Top Bar -->
-        <div class="px-6 py-3 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-900/50">
+        <div class="px-6 py-3 flex items-center justify-between bg-[var(--ui-bg-muted)]">
           <div class="flex items-center gap-3">
             <UBadge :color="getStatusColor(issue.status)" variant="solid" size="sm">
               {{ issue.status }}
             </UBadge>
-            <code class="px-2 py-0.5 text-xs font-mono bg-neutral-200 dark:bg-neutral-700 rounded">
+            <code class="px-2 py-0.5 text-xs font-mono bg-[var(--ui-bg-accent)] text-[var(--ui-text)]">
               {{ issue.key }}
             </code>
             <UBadge v-if="issue.issueType" color="neutral" variant="subtle" size="xs">
@@ -189,7 +189,7 @@ const handleFormSubmit = async (data: IssueFormData) => {
 
         <!-- Title (view mode only) -->
         <div v-if="!isEditing" class="px-6 py-4">
-          <h2 class="text-xl font-semibold leading-tight text-neutral-900 dark:text-neutral-100">
+          <h2 class="text-xl font-semibold leading-tight text-[var(--ui-text)]">
             {{ issue.summary }}
           </h2>
         </div>
@@ -276,21 +276,21 @@ const handleFormSubmit = async (data: IssueFormData) => {
 
             <!-- Labels -->
             <div class="space-y-3">
-              <h3 class="text-sm font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
-                <UIcon name="i-lucide-tags" class="w-4 h-4 text-neutral-500" />
+              <h3 class="text-sm font-semibold text-[var(--ui-text)] flex items-center gap-2">
+                <UIcon name="i-lucide-tags" class="w-4 h-4 text-[var(--ui-text-muted)]" />
                 Labels
               </h3>
               <div class="flex flex-wrap gap-2">
                 <UBadge
                   v-for="label in issue.labels"
                   :key="label"
-                  color="info"
+                  color="neutral"
                   variant="subtle"
                   size="sm"
                 >
                   {{ label }}
                 </UBadge>
-                <span v-if="!issue.labels?.length" class="text-sm text-neutral-400 dark:text-neutral-500 italic">
+                <span v-if="!issue.labels?.length" class="text-sm text-[var(--ui-text-dimmed)] italic">
                   Nessuna label
                 </span>
               </div>
@@ -298,11 +298,11 @@ const handleFormSubmit = async (data: IssueFormData) => {
 
             <!-- Description -->
             <div class="space-y-3">
-              <h3 class="text-sm font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
-                <UIcon name="i-lucide-align-left" class="w-4 h-4 text-neutral-500" />
+              <h3 class="text-sm font-semibold text-[var(--ui-text)] flex items-center gap-2">
+                <UIcon name="i-lucide-align-left" class="w-4 h-4 text-[var(--ui-text-muted)]" />
                 Descrizione
               </h3>
-              <div class="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700">
+              <div class="p-4 bg-[var(--ui-bg-muted)] border border-[var(--ui-border)]">
                 <JiraDescriptionPreview :content="issue.description" :attachments="attachments" />
               </div>
             </div>
@@ -332,7 +332,7 @@ const handleFormSubmit = async (data: IssueFormData) => {
             />
 
             <!-- Footer -->
-            <div class="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400 pt-4 border-t border-neutral-200 dark:border-neutral-700">
+            <div class="flex items-center justify-between text-xs text-[var(--ui-text-muted)] pt-4 border-t border-[var(--ui-border)]">
               <div class="flex items-center gap-1.5">
                 <UIcon name="i-lucide-calendar-plus" class="w-3.5 h-3.5" />
                 Creato: {{ formatDate(issue.created) }}

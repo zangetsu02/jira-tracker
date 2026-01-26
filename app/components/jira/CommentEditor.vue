@@ -65,9 +65,9 @@ defineExpose({ setTextareaRef })
 </script>
 
 <template>
-  <div class="comment-editor border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
+  <div class="comment-editor border border-[var(--ui-border)] overflow-hidden">
     <!-- Toolbar -->
-    <div class="flex items-center gap-0.5 px-2 py-1.5 bg-neutral-50 dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-neutral-700">
+    <div class="flex items-center gap-0.5 px-2 py-1.5 bg-[var(--ui-bg-muted)] border-b border-[var(--ui-border)]">
       <!-- Formatting buttons -->
       <template v-for="(item, index) in toolbarItems" :key="index">
         <USeparator v-if="item.type === 'separator'" orientation="vertical" class="h-4 mx-1" />
@@ -88,23 +88,23 @@ defineExpose({ setTextareaRef })
       <div class="flex-1" />
       
       <!-- View mode toggle -->
-      <div class="flex items-center bg-neutral-200 dark:bg-neutral-700 rounded-md p-0.5">
+      <div class="flex items-center bg-[var(--ui-bg-accent)] p-0.5">
         <button
           type="button"
-          class="px-2 py-0.5 text-xs font-medium rounded transition-all"
+          class="px-2 py-0.5 text-xs font-medium transition-all"
           :class="viewMode === 'edit' 
-            ? 'bg-white dark:bg-neutral-600 text-neutral-900 dark:text-neutral-100 shadow-sm' 
-            : 'text-neutral-600 dark:text-neutral-400'"
+            ? 'bg-[var(--ui-bg-elevated)] text-[var(--ui-text)] shadow-sm' 
+            : 'text-[var(--ui-text-muted)]'"
           @click="viewMode = 'edit'"
         >
           Scrivi
         </button>
         <button
           type="button"
-          class="px-2 py-0.5 text-xs font-medium rounded transition-all"
+          class="px-2 py-0.5 text-xs font-medium transition-all"
           :class="viewMode === 'preview' 
-            ? 'bg-white dark:bg-neutral-600 text-neutral-900 dark:text-neutral-100 shadow-sm' 
-            : 'text-neutral-600 dark:text-neutral-400'"
+            ? 'bg-[var(--ui-bg-elevated)] text-[var(--ui-text)] shadow-sm' 
+            : 'text-[var(--ui-text-muted)]'"
           :disabled="!modelValue.trim()"
           @click="viewMode = 'preview'"
         >
@@ -129,7 +129,7 @@ defineExpose({ setTextareaRef })
       <!-- Preview mode -->
       <div
         v-show="viewMode === 'preview'"
-        class="p-3 bg-white dark:bg-neutral-900 overflow-y-auto"
+        class="p-3 bg-[var(--ui-bg-elevated)] overflow-y-auto"
         :style="{ minHeight: `${rows * 1.5 + 1}rem` }"
       >
         <JiraDescriptionPreview 
@@ -137,7 +137,7 @@ defineExpose({ setTextareaRef })
           :content="modelValue" 
           :attachments="attachments"
         />
-        <p v-else class="text-sm text-neutral-400 dark:text-neutral-500 italic">
+        <p v-else class="text-sm text-[var(--ui-text-dimmed)] italic">
           Nessun contenuto da visualizzare
         </p>
       </div>
