@@ -9,6 +9,7 @@ const route = useRoute()
 
 const navigation = [
   { to: '/', icon: 'i-lucide-layout-dashboard', label: 'Dashboard' },
+  { to: '/jira', icon: 'i-simple-icons-jira', label: 'Jira Issues' },
   { to: '/settings', icon: 'i-lucide-settings-2', label: 'Impostazioni' }
 ]
 

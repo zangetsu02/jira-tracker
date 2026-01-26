@@ -27,6 +27,13 @@ const showJiraModal = ref(false)
 const filterStatus = ref<string>('all')
 const expandedResultId = ref<number | null>(null)
 const deletingId = ref<number | null>(null)
+const showChatSlideover = ref(false)
+const chatResult = ref<(AnalysisResult & { usecase?: UseCase }) | null>(null)
+
+const openChat = (result: AnalysisResult & { usecase?: UseCase }) => {
+  chatResult.value = result
+  showChatSlideover.value = true
+}
 
 const filterTabs = computed(() => [
   { id: 'all', label: 'Tutti', count: data.value?.summary.total ?? 0, color: 'neutral' as const },
@@ -617,7 +624,7 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
                   </div>
 
                   <!-- Action Buttons -->
-                  <div class="mt-6 pt-4 border-t border-[var(--ui-border)] flex justify-between items-center">
+                  <div class="mt-6 pt-4 border-t border-[var(--ui-border)] flex justify-between items-center gap-2">
                     <button
                       type="button"
                       class="h-10 px-5 bg-[var(--ui-error)] text-white font-medium text-sm flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
@@ -636,18 +643,31 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
                       />
                       Elimina
                     </button>
-                    <button
-                      v-if="!result.jiraIssueKey && result.status !== 'implemented'"
-                      type="button"
-                      class="h-10 px-5 bg-[var(--ui-info)] text-white font-medium text-sm flex items-center gap-2 hover:opacity-90 transition-opacity"
-                      @click.stop="openJiraModal(result)"
-                    >
-                      <UIcon
-                        name="i-simple-icons-jira"
-                        class="w-4 h-4"
-                      />
-                      Crea Issue Jira
-                    </button>
+                    <div class="flex items-center gap-2">
+                      <button
+                        type="button"
+                        class="h-10 px-5 bg-[var(--ui-primary)] text-white font-medium text-sm flex items-center gap-2 hover:opacity-90 transition-opacity"
+                        @click.stop="openChat(result)"
+                      >
+                        <UIcon
+                          name="i-lucide-message-circle"
+                          class="w-4 h-4"
+                        />
+                        Chiedi a Claude
+                      </button>
+                      <button
+                        v-if="!result.jiraIssueKey && result.status !== 'implemented'"
+                        type="button"
+                        class="h-10 px-5 bg-[var(--ui-info)] text-white font-medium text-sm flex items-center gap-2 hover:opacity-90 transition-opacity"
+                        @click.stop="openJiraModal(result)"
+                      >
+                        <UIcon
+                          name="i-simple-icons-jira"
+                          class="w-4 h-4"
+                        />
+                        Crea Issue Jira
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -663,6 +683,13 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
       :result="selectedResult"
       :microservice-name="microserviceName"
       @created="handleIssueCreated"
+    />
+
+    <!-- Claude Chat Slideover -->
+    <ClaudeChatSlideover
+      v-model:open="showChatSlideover"
+      :result="chatResult"
+      :microservice-name="microserviceName"
     />
   </div>
 </template>

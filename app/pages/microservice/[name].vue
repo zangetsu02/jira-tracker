@@ -31,7 +31,7 @@ const { data: microservice, pending, error, refresh } = await useFetch<Microserv
 )
 
 const { data: jiraIssues, pending: jiraLoading, refresh: refreshJira } = await useFetch<JiraIssuesResponse>(
-  () => `/api/jira/issues/${name.value}`,
+  () => `/api/jira/issues/by-label/${name.value}`,
   { default: () => ({ total: 0, issues: [] }) }
 )
 

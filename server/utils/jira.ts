@@ -149,6 +149,89 @@ export class JiraClient {
     return this.request(`/rest/api/2/search?jql=${jql}&maxResults=${maxResults}&fields=key,summary,status,priority,assignee,updated,created`)
   }
 
+  async searchIssues(options: {
+    project?: string
+    status?: string
+    search?: string
+    maxResults?: number
+  } = {}): Promise<JiraSearchResult> {
+    const { project, status, search, maxResults = 100 } = options
+
+    const conditions: string[] = []
+
+    if (project) {
+      conditions.push(`project = "${project}"`)
+    }
+
+    if (status) {
+      // Map common status categories using statusCategory which is more universal
+      if (status === 'open') {
+        conditions.push(`statusCategory = "To Do"`)
+      } else if (status === 'in_progress') {
+        conditions.push(`statusCategory = "In Progress"`)
+      } else if (status === 'done') {
+        conditions.push(`statusCategory = "Done"`)
+      } else {
+        conditions.push(`status = "${status}"`)
+      }
+    }
+
+    if (search && search.trim().length >= 2) {
+      // Escape special JQL characters and use text search
+      const escapedSearch = search.replace(/["\\\[\]]/g, '\\$&').trim()
+      // Try key match first (exact), then text search
+      if (/^[A-Z]+-\d+$/i.test(escapedSearch)) {
+        // Looks like a Jira key
+        conditions.push(`key = "${escapedSearch.toUpperCase()}"`)
+      } else {
+        conditions.push(`text ~ "${escapedSearch}*"`)
+      }
+    }
+
+    const jql = conditions.length > 0
+      ? `${conditions.join(' AND ')} ORDER BY updated DESC`
+      : 'ORDER BY updated DESC'
+
+    const encodedJql = encodeURIComponent(jql)
+    return this.request(`/rest/api/2/search?jql=${encodedJql}&maxResults=${maxResults}&fields=key,summary,status,priority,assignee,updated,created,labels,description,reporter`)
+  }
+
+  async updateIssue(issueKey: string, params: UpdateIssueParams): Promise<void> {
+    const fields: Record<string, unknown> = {}
+
+    if (params.summary !== undefined) {
+      fields.summary = params.summary
+    }
+
+    if (params.description !== undefined) {
+      fields.description = params.description
+    }
+
+    if (params.priority !== undefined) {
+      fields.priority = { name: params.priority }
+    }
+
+    if (params.labels !== undefined) {
+      fields.labels = params.labels
+    }
+
+    if (params.assignee !== undefined) {
+      if (params.assignee === null) {
+        fields.assignee = null
+      } else {
+        // Jira Cloud uses accountId, Jira Server uses name
+        fields.assignee = params.assignee.startsWith('5') || params.assignee.includes(':')
+          ? { accountId: params.assignee }
+          : { name: params.assignee }
+      }
+    }
+
+    await this.request(`/rest/api/2/issue/${issueKey}`, {
+      method: 'PUT',
+      body: JSON.stringify({ fields })
+    })
+  }
+
   buildIssueUrl(issueKey: string): string {
     return `${this.baseUrl}/browse/${issueKey}`
   }
@@ -162,11 +245,22 @@ export interface JiraSearchResult {
       summary: string
       status: { name: string }
       priority?: { name: string }
-      assignee?: { displayName: string }
+      assignee?: { displayName: string, accountId?: string }
       updated: string
       created: string
+      labels?: string[]
+      description?: string
+      reporter?: { displayName: string }
     }
   }>
+}
+
+export interface UpdateIssueParams {
+  summary?: string
+  description?: string
+  priority?: string
+  labels?: string[]
+  assignee?: string | null
 }
 
 export function createJiraClient(config: JiraConfig): JiraClient {
