@@ -4,8 +4,8 @@ import { microservices } from './microservices'
 export const usecases = pgTable('usecases', {
   id: serial('id').primaryKey(),
   microserviceId: integer('microservice_id').references(() => microservices.id, { onDelete: 'cascade' }),
-  code: varchar('code', { length: 50 }),
-  title: varchar('title', { length: 255 }),
+  code: varchar('code', { length: 255 }),
+  title: varchar('title', { length: 500 }),
   description: text('description'),
   actors: text('actors'),
   preconditions: text('preconditions'),

@@ -213,9 +213,6 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Data Table Row */
 .data-row {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
   padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--ui-border);
   transition: background-color 0.15s ease;

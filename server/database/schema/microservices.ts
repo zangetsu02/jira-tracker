@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, varchar } from 'drizzle-orm/pg-core'
+import { pgTable, serial, text, timestamp, varchar, boolean } from 'drizzle-orm/pg-core'
 
 export const microservices = pgTable('microservices', {
   id: serial('id').primaryKey(),
@@ -9,5 +9,6 @@ export const microservices = pgTable('microservices', {
   legacyPath: text('legacy_path'), // Path to legacy ASPX code (e.g., docs/aspx)
   lastAnalysis: timestamp('last_analysis'),
   lastReport: text('last_report'), // Full markdown report from analysis
+  excluded: boolean('excluded').default(false), // Exclude from analysis and stats
   createdAt: timestamp('created_at').defaultNow()
 })

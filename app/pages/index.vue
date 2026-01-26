@@ -5,8 +5,26 @@ const { user } = useAuth()
 const { getCoverageColor } = useAnalysisStatus()
 const { data: microservices, pending, error, refresh } = await useFetch<MicroserviceWithStatus[]>('/api/microservices')
 
-const stats = computed(() => {
+// Toggle per mostrare microservizi esclusi
+const showExcluded = ref(false)
+
+// Lista filtrata dei microservizi
+const filteredMicroservices = computed(() => {
   const list = microservices.value ?? []
+  if (showExcluded.value) {
+    return list
+  }
+  return list.filter(m => !m.excluded)
+})
+
+// Conteggio esclusi
+const excludedCount = computed(() => {
+  return (microservices.value ?? []).filter(m => m.excluded).length
+})
+
+const stats = computed(() => {
+  // Stats calcolate solo sui microservizi NON esclusi
+  const list = (microservices.value ?? []).filter(m => !m.excluded)
   const totalUseCases = list.reduce((acc, m) => acc + (m.useCaseCount || 0), 0)
   const implementedUseCases = list.reduce((acc, m) => acc + (m.implementedCount || 0), 0)
 
@@ -29,7 +47,7 @@ const greeting = computed(() => {
 })
 
 const userName = computed(() => {
-  const email = user.value?.email
+  const email = user.value?.name
   if (!email) return 'utente'
   const name = email.split('@')[0]
   return name.charAt(0).toUpperCase() + name.slice(1)
@@ -52,6 +70,26 @@ const formatDate = (date: string | null) => {
     day: '2-digit',
     month: 'short'
   })
+}
+
+// Toggle esclusione microservizio
+const togglingExclusion = ref<string | null>(null)
+
+const toggleExclusion = async (ms: MicroserviceWithStatus, event: Event) => {
+  event.stopPropagation()
+  togglingExclusion.value = ms.name
+
+  try {
+    await $fetch(`/api/microservices/${ms.name}/exclude`, {
+      method: 'PATCH',
+      body: { excluded: !ms.excluded }
+    })
+    await refresh()
+  } catch (e) {
+    console.error('Errore durante esclusione:', e)
+  } finally {
+    togglingExclusion.value = null
+  }
 }
 </script>
 
@@ -217,9 +255,22 @@ const formatDate = (date: string | null) => {
           <h2 class="section-header__title">
             Tutti i Microservizi
           </h2>
-          <span class="text-xs font-mono text-[var(--ui-text-dimmed)]">
-            {{ stats.total }} totali
-          </span>
+          <div class="flex items-center gap-4">
+            <button
+              v-if="excludedCount > 0"
+              class="flex items-center gap-2 text-xs text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] transition-colors"
+              @click="showExcluded = !showExcluded"
+            >
+              <UIcon
+                :name="showExcluded ? 'i-lucide-eye' : 'i-lucide-eye-off'"
+                class="w-4 h-4"
+              />
+              {{ showExcluded ? 'Nascondi' : 'Mostra' }} esclusi ({{ excludedCount }})
+            </button>
+            <span class="text-xs font-mono text-[var(--ui-text-dimmed)]">
+              {{ stats.total }} attivi
+            </span>
+          </div>
         </div>
 
         <!-- Empty State -->
@@ -256,32 +307,45 @@ const formatDate = (date: string | null) => {
         >
           <!-- Header Row -->
           <div class="grid grid-cols-12 gap-4 px-5 py-3 text-xs font-semibold uppercase tracking-wider text-[var(--ui-text-muted)] bg-[var(--ui-bg-muted)]">
-            <div class="col-span-5">Nome</div>
+            <div class="col-span-4">Nome</div>
             <div class="col-span-2 text-center">Documento</div>
             <div class="col-span-3 text-center">Copertura</div>
-            <div class="col-span-2 text-right">Ultima Analisi</div>
+            <div class="col-span-2 text-center">Ultima Analisi</div>
+            <div class="col-span-1 text-center">Azioni</div>
           </div>
 
           <!-- Data Rows -->
           <div
-            v-for="(ms, index) in microservices"
+            v-for="(ms, index) in filteredMicroservices"
             :key="ms.id"
             class="data-row data-row--clickable grid grid-cols-12 gap-4 items-center animate-slide-in-right"
+            :class="{ 'opacity-50': ms.excluded }"
             :style="{ animationDelay: `${index * 0.03}s` }"
             @click="navigateTo(`/microservice/${ms.name}`)"
           >
             <!-- Name -->
-            <div class="col-span-5 flex items-center gap-4 min-w-0">
-              <div class="w-10 h-10 bg-[var(--ui-bg-muted)] flex items-center justify-center flex-shrink-0">
+            <div class="col-span-4 flex items-center gap-4 min-w-0">
+              <div
+                class="w-10 h-10 flex items-center justify-center flex-shrink-0"
+                :class="ms.excluded ? 'bg-[var(--ui-bg-elevated)]' : 'bg-[var(--ui-bg-muted)]'"
+              >
                 <UIcon
-                  name="i-lucide-box"
+                  :name="ms.excluded ? 'i-lucide-eye-off' : 'i-lucide-box'"
                   class="w-5 h-5 text-[var(--ui-text-muted)]"
                 />
               </div>
               <div class="min-w-0">
-                <p class="font-medium truncate">
-                  {{ ms.name.replace('sil-ms-', '') }}
-                </p>
+                <div class="flex items-center gap-2">
+                  <p class="font-medium truncate">
+                    {{ ms.name.replace('sil-ms-', '') }}
+                  </p>
+                  <span
+                    v-if="ms.excluded"
+                    class="tag text-[10px]"
+                  >
+                    Escluso
+                  </span>
+                </div>
                 <p class="text-xs text-[var(--ui-text-dimmed)] font-mono truncate">
                   {{ ms.name }}
                 </p>
@@ -305,7 +369,7 @@ const formatDate = (date: string | null) => {
             <!-- Coverage -->
             <div class="col-span-3">
               <div
-                v-if="ms.hasAnalysis"
+                v-if="ms.hasAnalysis && !ms.excluded"
                 class="flex items-center gap-3"
               >
                 <div class="flex-1 h-2 bg-[var(--ui-bg-muted)] overflow-hidden">
@@ -324,6 +388,12 @@ const formatDate = (date: string | null) => {
                 </span>
               </div>
               <span
+                v-else-if="ms.excluded"
+                class="text-sm text-[var(--ui-text-dimmed)]"
+              >
+                -
+              </span>
+              <span
                 v-else
                 class="text-sm text-[var(--ui-text-dimmed)]"
               >
@@ -332,10 +402,31 @@ const formatDate = (date: string | null) => {
             </div>
 
             <!-- Last Analysis -->
-            <div class="col-span-2 text-right">
+            <div class="col-span-2 text-center">
               <span class="text-sm font-mono text-[var(--ui-text-muted)]">
                 {{ formatDate(ms.lastAnalysis) }}
               </span>
+            </div>
+
+            <!-- Actions -->
+            <div class="col-span-1 flex justify-center">
+              <button
+                class="p-2 rounded hover:bg-[var(--ui-bg-muted)] transition-colors"
+                :title="ms.excluded ? 'Includi microservizio' : 'Escludi microservizio'"
+                :disabled="togglingExclusion === ms.name"
+                @click="toggleExclusion(ms, $event)"
+              >
+                <UIcon
+                  v-if="togglingExclusion === ms.name"
+                  name="i-lucide-loader-2"
+                  class="w-4 h-4 animate-spin text-[var(--ui-text-muted)]"
+                />
+                <UIcon
+                  v-else
+                  :name="ms.excluded ? 'i-lucide-eye' : 'i-lucide-eye-off'"
+                  class="w-4 h-4 text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]"
+                />
+              </button>
             </div>
           </div>
         </div>

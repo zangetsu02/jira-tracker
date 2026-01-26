@@ -2,7 +2,7 @@
 import { z } from 'zod'
 import { refDebounced } from '@vueuse/core'
 import type { FormSubmitEvent } from '@nuxt/ui'
-import type { AnalysisResult, UseCase } from '~~/shared/utils/types'
+import type { AnalysisResult, UseCase, JiraConfig } from '~~/shared/utils/types'
 
 interface Props {
   result: (AnalysisResult & { usecase?: UseCase }) | null
@@ -16,6 +16,9 @@ const emit = defineEmits<{
 }>()
 
 const open = defineModel<boolean>('open', { default: false })
+
+// Fetch Jira config for baseLabel and titlePrefix
+const { data: jiraConfig } = await useFetch<JiraConfig | null>('/api/jira/config')
 
 const { getStatusColor, getStatusLabel, getConfidenceColor } = useAnalysisStatus()
 
@@ -40,7 +43,7 @@ watch(userSearchQueryDebounced, async (query) => {
     jiraUsers.value = []
     return
   }
-  
+
   loadingUsers.value = true
   try {
     jiraUsers.value = await $fetch<JiraUser[]>(`/api/jira/users?q=${encodeURIComponent(query)}`)
@@ -134,19 +137,42 @@ const buildDescription = (result: AnalysisResult & { usecase?: UseCase }, msName
   return lines.join('\n').trim()
 }
 
+// Build title with prefix if configured
+const buildTitle = (result: AnalysisResult & { usecase?: UseCase }, msName: string): string => {
+  const uc = result.usecase
+  const baseTitle = uc
+    ? `${result.status === 'missing' ? 'Implementare' : 'Completare'} UC ${uc.code}: ${uc.title}`
+    : result.evidence || 'Issue da risolvere'
+
+  const titlePrefix = jiraConfig.value?.titlePrefix
+  if (titlePrefix) {
+    return titlePrefix
+      .replace(/\$NomeMicroservizio/gi, msName)
+      .replace(/\$TitoloIssue/gi, baseTitle)
+  }
+
+  return `[${msName}] ${baseTitle}`
+}
+
+// Build labels with baseLabel if configured
+const buildLabels = (msName: string): string[] => {
+  const baseLabel = jiraConfig.value?.baseLabel
+  if (baseLabel) {
+    return [baseLabel, msName]
+  }
+  return [msName]
+}
+
 // Initialize form when result changes
 watch(() => props.result, (result) => {
   if (result) {
-    const uc = result.usecase
     const msName = props.microserviceName
 
-    state.summary = uc
-      ? `[${msName}] ${result.status === 'missing' ? 'Implementare' : 'Completare'} UC ${uc.code}: ${uc.title}`
-      : `[${msName}] ${result.evidence || 'Issue da risolvere'}`
+    state.summary = buildTitle(result, msName)
     state.description = buildDescription(result, msName)
     state.priority = result.confidence === 'high' ? 'High' : result.confidence === 'low' ? 'Low' : 'Medium'
     state.assignee = ''
-    state.labels = [msName]
+    state.labels = buildLabels(msName)
 
     jiraError.value = null
   }
@@ -185,7 +211,7 @@ const onSubmit = async (event: FormSubmitEvent<Schema>) => {
 <template>
   <UModal
     v-model:open="open"
-    :ui="{ width: 'sm:max-w-2xl' }"
+    class="sm:max-w-xl"
   >
     <template #header>
       <div class="flex items-center gap-4">
@@ -300,6 +326,7 @@ const onSubmit = async (event: FormSubmitEvent<Schema>) => {
                 v-model="state.assignee"
                 :search-term="userSearchQuery"
                 :items="userOptions"
+                value-key="value"
                 placeholder="Non assegnato"
                 :loading="loadingUsers"
                 size="lg"

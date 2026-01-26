@@ -26,6 +26,7 @@ const selectedResult = ref<(AnalysisResult & { usecase?: UseCase }) | null>(null
 const showJiraModal = ref(false)
 const filterStatus = ref<string>('all')
 const expandedResultId = ref<number | null>(null)
+const deletingId = ref<number | null>(null)
 
 const filterTabs = computed(() => [
   { id: 'all', label: 'Tutti', count: data.value?.summary.total ?? 0, color: 'neutral' as const },
@@ -56,6 +57,25 @@ const openJiraModal = (result: AnalysisResult & { usecase?: UseCase }) => {
 const handleIssueCreated = async (issueKey: string) => {
   await refresh()
   alert(`Issue creata: ${issueKey}`)
+}
+
+const handleDeleteResult = async (result: AnalysisResult & { usecase?: UseCase }) => {
+  const description = result.usecase?.description || result.evidence || result.notes || 'questo risultato'
+  if (!confirm(`Sei sicuro di voler eliminare "${description.substring(0, 50)}${description.length > 50 ? '...' : ''}"?`)) {
+    return
+  }
+
+  deletingId.value = result.id
+  try {
+    await $fetch(`/api/analysis-result/${result.id}`, {
+      method: 'DELETE'
+    })
+    await refresh()
+  } catch (e: any) {
+    alert(`Errore durante l'eliminazione: ${e.message || 'Errore sconosciuto'}`)
+  } finally {
+    deletingId.value = null
+  }
 }
 
 // Auto-expand highlighted result
@@ -596,12 +616,28 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
                     </div>
                   </div>
 
-                  <!-- Action Button -->
-                  <div
-                    v-if="!result.jiraIssueKey && result.status !== 'implemented'"
-                    class="mt-6 pt-4 border-t border-[var(--ui-border)] flex justify-end"
-                  >
+                  <!-- Action Buttons -->
+                  <div class="mt-6 pt-4 border-t border-[var(--ui-border)] flex justify-between items-center">
                     <button
+                      type="button"
+                      class="h-10 px-5 bg-[var(--ui-error)] text-white font-medium text-sm flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+                      :disabled="deletingId === result.id"
+                      @click.stop="handleDeleteResult(result)"
+                    >
+                      <UIcon
+                        v-if="deletingId !== result.id"
+                        name="i-lucide-trash-2"
+                        class="w-4 h-4"
+                      />
+                      <UIcon
+                        v-else
+                        name="i-lucide-loader-2"
+                        class="w-4 h-4 animate-spin"
+                      />
+                      Elimina
+                    </button>
+                    <button
+                      v-if="!result.jiraIssueKey && result.status !== 'implemented'"
                       type="button"
                       class="h-10 px-5 bg-[var(--ui-info)] text-white font-medium text-sm flex items-center gap-2 hover:opacity-90 transition-opacity"
                       @click.stop="openJiraModal(result)"

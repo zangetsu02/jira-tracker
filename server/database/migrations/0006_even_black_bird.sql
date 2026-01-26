@@ -1,0 +1,1 @@
+ALTER TABLE "microservices" ADD COLUMN "excluded" boolean DEFAULT false;
