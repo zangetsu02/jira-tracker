@@ -299,12 +299,9 @@ const handleFormSubmit = async (data: IssueFormData) => {
                 <UIcon name="i-lucide-align-left" class="w-4 h-4 text-neutral-500" />
                 Descrizione
               </h3>
-              <div v-if="issue.description" class="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700">
-                <pre class="whitespace-pre-wrap text-sm font-sans leading-relaxed text-neutral-700 dark:text-neutral-300">{{ issue.description }}</pre>
+              <div class="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700">
+                <JiraDescriptionPreview :content="issue.description" />
               </div>
-              <p v-else class="text-sm text-neutral-400 dark:text-neutral-500 italic py-4">
-                Nessuna descrizione
-              </p>
             </div>
 
             <!-- Edit Button -->

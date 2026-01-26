@@ -221,18 +221,12 @@ defineExpose({ reset })
       name="description"
       class="w-full"
     >
-      <div class="w-full space-y-2">
-        <UTextarea
-          v-model="state.description"
-          placeholder="Descrizione della issue..."
-          :rows="14"
-          size="lg"
-          class="w-full font-mono text-sm"
-        />
-        <p class="text-xs text-neutral-500 dark:text-neutral-400">
-          Formattazione Jira: *bold*, _italic_, h1. Titolo, h2. Sottotitolo, {code}codice{code}
-        </p>
-      </div>
+      <JiraDescriptionEditor
+        v-model="state.description"
+        placeholder="Descrizione della issue..."
+        :rows="14"
+        :disabled="props.loading"
+      />
     </UFormField>
 
     <!-- Actions -->
