@@ -24,6 +24,10 @@ const props = withDefaults(defineProps<{
 
 const modelValue = defineModel<string>({ default: '' })
 
+const emit = defineEmits<{
+  'textarea-ref': [el: HTMLTextAreaElement | null]
+}>()
+
 // Mention state
 const showMentions = ref(false)
 const mentionQuery = ref('')
@@ -160,10 +164,17 @@ const handleClickOutside = (event: MouseEvent) => {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  // Emit textarea ref for parent components
+  emit('textarea-ref', textareaRef.value)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+})
+
+// Also emit when ref changes
+watch(textareaRef, (el) => {
+  emit('textarea-ref', el)
 })
 </script>
 
