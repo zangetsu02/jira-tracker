@@ -45,7 +45,8 @@ const editFormData = computed<Partial<IssueFormData>>(() => {
     description: props.issue.description || '',
     priority: props.issue.priority || 'Medium',
     assignee: getAssigneeId(props.issue.assignee) || '',
-    labels: [...(props.issue.labels || [])]
+    labels: [...(props.issue.labels || [])],
+    issueType: props.issue.issueType || ''
   }
 })
 
@@ -119,7 +120,8 @@ const handleFormSubmit = async (data: IssueFormData) => {
         description: data.description,
         priority: data.priority || undefined,
         labels: data.labels,
-        assignee: data.assignee || undefined
+        assignee: data.assignee || undefined,
+        issueType: data.issueType || undefined
       }
     })
 
@@ -174,6 +176,16 @@ const handleFormSubmit = async (data: IssueFormData) => {
           
           <!-- Actions -->
           <div class="flex items-center gap-2">
+            <UButton
+              v-if="!isEditing"
+              color="primary"
+              variant="soft"
+              size="sm"
+              icon="i-lucide-pencil"
+              @click="startEditing"
+            >
+              Modifica Issue
+            </UButton>
             <UTooltip v-if="!isEditing" text="Apri in Jira">
               <UButton
                 :to="issue.url"
@@ -307,19 +319,7 @@ const handleFormSubmit = async (data: IssueFormData) => {
               </div>
             </div>
 
-            <!-- Edit Button -->
-            <UButton
-              color="primary"
-              variant="soft"
-              icon="i-lucide-pencil"
-              size="lg"
-              block
-              @click="startEditing"
-            >
-              Modifica Issue
-            </UButton>
-
-            <USeparator />
+            
 
             <!-- Comments -->
             <JiraIssueComments

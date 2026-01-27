@@ -12,12 +12,21 @@ interface JiraUser {
   accountId?: string
 }
 
+interface JiraIssueType {
+  id: string
+  name: string
+  description?: string
+  iconUrl?: string
+  subtask?: boolean
+}
+
 export interface IssueFormData {
   summary: string
   description: string
   priority: string
   assignee: string
   labels: string[]
+  issueType?: string
 }
 
 const props = withDefaults(defineProps<{
@@ -45,7 +54,8 @@ const schema = z.object({
   description: z.string().optional(),
   priority: z.string(),
   assignee: z.string().optional(),
-  labels: z.array(z.string())
+  labels: z.array(z.string()),
+  issueType: z.string().optional()
 })
 
 type Schema = z.output<typeof schema>
@@ -56,7 +66,24 @@ const state = reactive<Schema>({
   description: '',
   priority: 'Medium',
   assignee: '',
-  labels: []
+  labels: [],
+  issueType: ''
+})
+
+// Issue types
+const issueTypes = ref<JiraIssueType[]>([])
+const loadingIssueTypes = ref(false)
+
+// Fetch issue types on mount
+onMounted(async () => {
+  loadingIssueTypes.value = true
+  try {
+    issueTypes.value = await $fetch<JiraIssueType[]>('/api/jira/issue-types')
+  } catch {
+    issueTypes.value = []
+  } finally {
+    loadingIssueTypes.value = false
+  }
 })
 
 // User search
@@ -100,6 +127,14 @@ const userOptions = computed(() => {
     }))
 })
 
+const issueTypeOptions = computed(() => {
+  return issueTypes.value.map(t => ({
+    label: t.name,
+    value: t.name,
+    icon: t.iconUrl
+  }))
+})
+
 // Initialize form when initialData changes
 watch(() => props.initialData, (data) => {
   if (data) {
@@ -108,6 +143,7 @@ watch(() => props.initialData, (data) => {
     state.priority = data.priority || 'Medium'
     state.assignee = data.assignee || ''
     state.labels = data.labels ? [...data.labels] : []
+    state.issueType = data.issueType || ''
   }
 }, { immediate: true, deep: true })
 
@@ -118,7 +154,8 @@ const onSubmit = async (event: FormSubmitEvent<Schema>) => {
     description: event.data.description || '',
     priority: event.data.priority,
     assignee: event.data.assignee || '',
-    labels: event.data.labels
+    labels: event.data.labels,
+    issueType: event.data.issueType || undefined
   })
 }
 
@@ -130,6 +167,7 @@ const reset = () => {
     state.priority = props.initialData.priority || 'Medium'
     state.assignee = props.initialData.assignee || ''
     state.labels = props.initialData.labels ? [...props.initialData.labels] : []
+    state.issueType = props.initialData.issueType || ''
   }
 }
 
@@ -159,8 +197,23 @@ defineExpose({ reset })
       />
     </UFormField>
 
-    <!-- Priority & Assignee -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <!-- Issue Type, Priority & Assignee -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <UFormField
+        label="Tipo"
+        name="issueType"
+        class="w-full"
+      >
+        <USelect
+          v-model="state.issueType"
+          :items="issueTypeOptions"
+          :loading="loadingIssueTypes"
+          placeholder="Seleziona tipo"
+          size="lg"
+          class="w-full"
+        />
+      </UFormField>
+
       <UFormField
         label="Priorità"
         name="priority"
@@ -188,13 +241,13 @@ defineExpose({ reset })
           :loading="loadingUsers"
           size="lg"
           searchable
-          searchable-placeholder="Cerca utente (min 2 caratteri)..."
+          searchable-placeholder="Cerca utente..."
           ignore-filter
           class="w-full"
         >
           <template #empty>
             <span class="text-[var(--ui-text-muted)] text-sm px-2 py-1">
-              {{ userSearchQuery.length < 2 ? 'Digita almeno 2 caratteri...' : 'Nessun utente trovato' }}
+              {{ userSearchQuery.length < 2 ? 'Digita almeno 2 caratteri' : 'Nessun utente trovato' }}
             </span>
           </template>
         </USelectMenu>

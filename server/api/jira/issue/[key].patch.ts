@@ -43,7 +43,8 @@ export default defineEventHandler(async (event) => {
       description: body.description,
       priority: body.priority,
       labels: body.labels,
-      assignee: body.assignee
+      assignee: body.assignee,
+      issueType: body.issueType
     })
 
     return { success: true }

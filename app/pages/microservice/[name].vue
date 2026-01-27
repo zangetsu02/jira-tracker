@@ -316,10 +316,8 @@ const formatDate = (date: string | null) => {
                             <UIcon name="i-lucide-file-search" class="w-5 h-5 text-[var(--ui-info)] animate-pulse" />
                         </div>
                         <div>
-                            <p class="font-medium">{{ EXTRACTION_PHASE_LABELS[extractionPhase] || 'Estrazione in
-                                corso...' }}</p>
-                            <p class="text-xs text-[var(--ui-text-muted)]">Claude sta leggendo il PDF ed estraendo gli
-                                use case</p>
+                            <p class="font-medium">{{ EXTRACTION_PHASE_LABELS[extractionPhase] || 'Estrazione in corso...' }}</p>
+                            <p class="text-xs text-[var(--ui-text-muted)]">Claude sta leggendo il PDF ed estraendo gli use case</p>
                         </div>
                     </div>
                     <span class="text-2xl font-display">{{ extractionProgress }}%</span>
@@ -542,8 +540,7 @@ const formatDate = (date: string | null) => {
                             Nessuna analisi
                         </p>
                         <p class="empty-state__description">
-                            {{ hasUseCases ? 'Avvia l\'analisi per confrontare gli use case' : 'Estrai gli use case e
-                            avvia l\'analisi' }}
+                            {{ hasUseCases ? 'Avvia l\'analisi per confrontare gli use case' : 'Estrai gli use case e avvia l\'analisi' }}
                         </p>
                     </div>
 
@@ -596,20 +593,17 @@ const formatDate = (date: string | null) => {
                 <!-- Stats Bar -->
                 <div v-if="jiraIssues?.issues?.length" class="jira-card__stats">
                     <div class="jira-card__stat">
-                        <span class="jira-card__stat-value">{{jiraIssues.issues.filter(i => i.status === 'Aperto' ||
-                            i.status === 'Open' || i.status === 'To Do').length }}</span>
+                        <span class="jira-card__stat-value">{{ jiraIssues.issues.filter(i => i.status === 'Aperto' || i.status === 'Open' || i.status === 'To Do').length }}</span>
                         <span class="jira-card__stat-label">Aperte</span>
                     </div>
                     <div class="jira-card__stat-divider" />
                     <div class="jira-card__stat">
-                        <span class="jira-card__stat-value">{{jiraIssues.issues.filter(i => i.status === 'In Progress'
-                            || i.status === 'In Corso').length }}</span>
+                        <span class="jira-card__stat-value">{{ jiraIssues.issues.filter(i => i.status === 'In Progress' || i.status === 'In Corso').length }}</span>
                         <span class="jira-card__stat-label">In corso</span>
                     </div>
                     <div class="jira-card__stat-divider" />
                     <div class="jira-card__stat">
-                        <span class="jira-card__stat-value">{{jiraIssues.issues.filter(i => i.status === 'Done' ||
-                            i.status === 'Chiuso' || i.status === 'Resolved').length }}</span>
+                        <span class="jira-card__stat-value">{{ jiraIssues.issues.filter(i => i.status === 'Done' || i.status === 'Chiuso' || i.status === 'Resolved').length }}</span>
                         <span class="jira-card__stat-label">Chiuse</span>
                     </div>
                 </div>

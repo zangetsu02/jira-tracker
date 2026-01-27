@@ -226,6 +226,10 @@ export class JiraClient {
             }
         }
 
+        if (params.issueType !== undefined) {
+            fields.issuetype = { name: params.issueType }
+        }
+
         await this.request(`/rest/api/2/issue/${issueKey}`, {
             method: 'PUT',
             body: JSON.stringify({ fields })
@@ -279,6 +283,7 @@ export interface UpdateIssueParams {
     priority?: string
     labels?: string[]
     assignee?: string | null
+    issueType?: string
 }
 
 export interface JiraComment {
