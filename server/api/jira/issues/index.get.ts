@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
       project: config[0].defaultProject || undefined,
       status: status || undefined,
       search: search || undefined,
-      maxResults: 100
+      maxResults: 500
     })
 
     return {

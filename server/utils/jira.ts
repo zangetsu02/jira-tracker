@@ -263,6 +263,22 @@ export class JiraClient {
     )
     return issue.fields.attachment || []
   }
+
+  async getTransitions(issueKey: string): Promise<JiraTransition[]> {
+    const result = await this.request<{ transitions: JiraTransition[] }>(
+      `/rest/api/2/issue/${issueKey}/transitions`
+    )
+    return result.transitions || []
+  }
+
+  async doTransition(issueKey: string, transitionId: string): Promise<void> {
+    await this.request(`/rest/api/2/issue/${issueKey}/transitions`, {
+      method: 'POST',
+      body: JSON.stringify({
+        transition: { id: transitionId }
+      })
+    })
+  }
 }
 
 export interface JiraSearchResult {
@@ -327,6 +343,20 @@ export interface JiraAttachment {
   mimeType: string
   content: string // URL to download the attachment
   thumbnail?: string // URL to thumbnail (for images)
+}
+
+export interface JiraTransition {
+  id: string
+  name: string
+  to: {
+    id: string
+    name: string
+    statusCategory: {
+      id: number
+      key: string
+      name: string
+    }
+  }
 }
 
 export function createJiraClient(config: JiraClientConfig): JiraClient {

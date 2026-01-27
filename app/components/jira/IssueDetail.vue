@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { JiraIssue, JiraComment, JiraCommentsResponse, JiraAttachment } from '~/composables/useJiraHelpers'
+import type { JiraIssue, JiraComment, JiraCommentsResponse, JiraAttachment, JiraTransition, JiraTransitionsResponse } from '~/composables/useJiraHelpers'
 import type { IssueFormData } from './IssueForm.vue'
 
 const props = defineProps<{
@@ -34,6 +34,11 @@ const comments = ref<JiraComment[]>([])
 const loadingComments = ref(false)
 const commentsRef = ref<InstanceType<typeof import('./IssueComments.vue').default> | null>(null)
 
+// Transitions state
+const transitions = ref<JiraTransition[]>([])
+const loadingTransitions = ref(false)
+const executingTransition = ref<string | null>(null)
+
 // Attachments - derived from issue prop (no separate API call needed)
 const attachments = computed<JiraAttachment[]>(() => props.issue?.attachments || [])
 
@@ -56,6 +61,7 @@ watch(() => props.issue, (issue) => {
     isEditing.value = false
     saveError.value = null
     refreshComments()
+    refreshTransitions()
   }
 }, { immediate: true })
 
@@ -93,6 +99,59 @@ const handleAddComment = async (body: string) => {
   } finally {
     commentsRef.value?.setAddingComment(false)
   }
+}
+
+// Transitions
+const refreshTransitions = async () => {
+  if (!props.issue?.key) {
+    transitions.value = []
+    return
+  }
+
+  loadingTransitions.value = true
+  try {
+    const result = await $fetch<JiraTransitionsResponse>(`/api/jira/issue/${props.issue.key}/transitions`)
+    transitions.value = result.transitions
+  } catch (e) {
+    console.error('Error fetching transitions:', e)
+    transitions.value = []
+  } finally {
+    loadingTransitions.value = false
+  }
+}
+
+const executeTransition = async (transitionId: string) => {
+  if (!props.issue?.key) return
+
+  executingTransition.value = transitionId
+  try {
+    await $fetch(`/api/jira/issue/${props.issue.key}/transitions`, {
+      method: 'POST',
+      body: { transitionId },
+      credentials: 'include'
+    })
+    emit('refresh')
+  } catch (e) {
+    console.error('Error executing transition:', e)
+  } finally {
+    executingTransition.value = null
+  }
+}
+
+// Get icon for transition based on target status category
+const getTransitionIcon = (transition: JiraTransition): string => {
+  const category = transition.to.statusCategory.key
+  if (category === 'done') return 'i-lucide-check-circle'
+  if (category === 'indeterminate') return 'i-lucide-play-circle'
+  return 'i-lucide-circle'
+}
+
+// Get color for transition based on target status category
+const getTransitionColor = (transition: JiraTransition): 'success' | 'info' | 'warning' | 'neutral' => {
+  const category = transition.to.statusCategory.key
+  if (category === 'done') return 'success'
+  if (category === 'indeterminate') return 'info'
+  return 'neutral'
 }
 
 // Edit actions
@@ -179,13 +238,58 @@ const handleFormSubmit = async (data: IssueFormData) => {
         <!-- Top Bar -->
         <div class="px-6 py-3 flex items-center justify-between bg-[var(--ui-bg-muted)]">
           <div class="flex items-center gap-3">
+            <!-- Status with Transition Dropdown -->
+            <UPopover v-if="transitions.length > 0">
+              <UBadge
+                :color="getStatusColor(issue.status)"
+                variant="solid"
+                size="sm"
+                class="cursor-pointer hover:opacity-80 transition-opacity"
+              >
+                <UIcon
+                  v-if="executingTransition"
+                  name="i-lucide-loader-2"
+                  class="w-3 h-3 mr-1 animate-spin"
+                />
+                {{ issue.status }}
+                <UIcon
+                  name="i-lucide-chevron-down"
+                  class="w-3 h-3 ml-1"
+                />
+              </UBadge>
+
+              <template #content>
+                <div class="p-1 min-w-[160px]">
+                  <button
+                    v-for="t in transitions"
+                    :key="t.id"
+                    :disabled="executingTransition !== null"
+                    class="w-full flex items-center gap-2 px-3 py-2 text-sm text-left rounded hover:bg-[var(--ui-bg-elevated)] disabled:opacity-50 disabled:cursor-not-allowed"
+                    @click="executeTransition(t.id)"
+                  >
+                    <UIcon
+                      :name="getTransitionIcon(t)"
+                      class="w-4 h-4"
+                      :class="{
+                        'text-green-500': t.to.statusCategory.key === 'done',
+                        'text-blue-500': t.to.statusCategory.key === 'indeterminate',
+                        'text-gray-500': t.to.statusCategory.key === 'new'
+                      }"
+                    />
+                    {{ t.name }}
+                  </button>
+                </div>
+              </template>
+            </UPopover>
             <UBadge
+              v-else
               :color="getStatusColor(issue.status)"
               variant="solid"
               size="sm"
             >
               {{ issue.status }}
             </UBadge>
+
             <code class="px-2 py-0.5 text-xs font-mono bg-[var(--ui-bg-accent)] text-[var(--ui-text)]">
               {{ issue.key }}
             </code>

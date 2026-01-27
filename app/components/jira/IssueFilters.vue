@@ -10,9 +10,9 @@ const props = defineProps<{
 }>()
 
 const searchQuery = defineModel<string>('search', { default: '' })
-const statusFilter = defineModel<string>('status', { default: 'all' })
-const labelFilter = defineModel<string>('label', { default: '' })
-const assigneeFilter = defineModel<string>('assignee', { default: '' })
+const statusFilter = defineModel<string[]>('status', { default: () => [] })
+const labelFilter = defineModel<string[]>('label', { default: () => [] })
+const assigneeFilter = defineModel<string[]>('assignee', { default: () => [] })
 const priorityFilter = defineModel<string>('priority', { default: '' })
 const issueTypeFilter = defineModel<string>('issueType', { default: '' })
 const sortBy = defineModel<string>('sortBy', { default: 'updated' })
@@ -23,7 +23,6 @@ defineEmits<{
 }>()
 
 const statusOptions = [
-  { label: 'Tutte', value: 'all' },
   { label: 'Aperte', value: 'open' },
   { label: 'In Corso', value: 'in_progress' },
   { label: 'Chiuse', value: 'done' }
@@ -37,36 +36,25 @@ const sortOptions = [
 ]
 
 const hasActiveFilters = computed(() =>
-  labelFilter.value
-  || assigneeFilter.value
+  labelFilter.value.length > 0
+  || assigneeFilter.value.length > 0
   || priorityFilter.value
   || issueTypeFilter.value
-  || (statusFilter.value && statusFilter.value !== 'all')
+  || statusFilter.value.length > 0
 )
 
-const activeFiltersCount = computed(() => {
-  let count = 0
-  if (labelFilter.value) count++
-  if (assigneeFilter.value) count++
-  if (priorityFilter.value) count++
-  if (issueTypeFilter.value) count++
-  if (statusFilter.value && statusFilter.value !== 'all') count++
-  return count
-})
+// Popover open states
+const statusOpen = ref(false)
+const priorityOpen = ref(false)
+const typeOpen = ref(false)
+const assigneeOpen = ref(false)
+const labelOpen = ref(false)
+const sortOpen = ref(false)
 
 // Toggle sort order
 const toggleSortOrder = () => {
   sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
 }
-
-// Priority items with icons
-const priorityItems = computed(() => {
-  return props.priorities.map(p => ({
-    label: p,
-    value: p,
-    icon: getPriorityIcon(p)
-  }))
-})
 
 // Priority icon helper
 const getPriorityIcon = (priority: string): string => {
@@ -80,12 +68,70 @@ const getPriorityIcon = (priority: string): string => {
 
 // Get display label for status
 const getStatusLabel = (value: string) => {
-  return statusOptions.find(o => o.value === value)?.label || 'Tutte'
+  return statusOptions.find(o => o.value === value)?.label || value
 }
 
 // Get display label for sort
 const getSortLabel = (value: string) => {
   return sortOptions.find(o => o.value === value)?.label || 'Ultima modifica'
+}
+
+// Select handlers
+const toggleStatus = (value: string) => {
+  const index = statusFilter.value.indexOf(value)
+  if (index === -1) {
+    statusFilter.value = [...statusFilter.value, value]
+  } else {
+    statusFilter.value = statusFilter.value.filter(s => s !== value)
+  }
+}
+
+const clearStatuses = () => {
+  statusFilter.value = []
+  statusOpen.value = false
+}
+
+const selectPriority = (value: string) => {
+  priorityFilter.value = value
+  priorityOpen.value = false
+}
+
+const selectType = (value: string) => {
+  issueTypeFilter.value = value
+  typeOpen.value = false
+}
+
+const toggleAssignee = (value: string) => {
+  const index = assigneeFilter.value.indexOf(value)
+  if (index === -1) {
+    assigneeFilter.value = [...assigneeFilter.value, value]
+  } else {
+    assigneeFilter.value = assigneeFilter.value.filter(a => a !== value)
+  }
+}
+
+const clearAssignees = () => {
+  assigneeFilter.value = []
+  assigneeOpen.value = false
+}
+
+const toggleLabel = (value: string) => {
+  const index = labelFilter.value.indexOf(value)
+  if (index === -1) {
+    labelFilter.value = [...labelFilter.value, value]
+  } else {
+    labelFilter.value = labelFilter.value.filter(l => l !== value)
+  }
+}
+
+const clearLabels = () => {
+  labelFilter.value = []
+  labelOpen.value = false
+}
+
+const selectSort = (value: string) => {
+  sortBy.value = value
+  sortOpen.value = false
 }
 </script>
 
@@ -125,26 +171,58 @@ const getSortLabel = (value: string) => {
       <!-- Divider -->
       <div class="h-5 w-px bg-[var(--ui-border)]" />
 
-      <!-- Status Filter -->
-      <UDropdownMenu :items="statusOptions.map(o => ({ label: o.label, click: () => statusFilter = o.value }))">
+      <!-- Status Filter (Multi-select) -->
+      <UPopover v-model:open="statusOpen">
         <UButton
           color="neutral"
           variant="ghost"
           size="sm"
           trailing-icon="i-lucide-chevron-down"
-          :class="{ 'bg-[var(--ui-bg-elevated)] ring-1 ring-[var(--ui-border-accented)]': statusFilter !== 'all' }"
+          :class="{ 'bg-[var(--ui-bg-elevated)] ring-1 ring-[var(--ui-border-accented)]': statusFilter.length > 0 }"
         >
-          Stato: {{ getStatusLabel(statusFilter) }}
+          <template v-if="statusFilter.length === 0">
+            Stato
+          </template>
+          <template v-else-if="statusFilter.length === 1">
+            {{ getStatusLabel(statusFilter[0]) }}
+          </template>
+          <template v-else>
+            {{ statusFilter.length }} stati
+          </template>
         </UButton>
-      </UDropdownMenu>
+        <template #content>
+          <div class="min-w-[160px]">
+            <div class="p-2 border-b border-[var(--ui-border)] flex items-center justify-between">
+              <span class="text-xs font-medium text-[var(--ui-text-muted)]">Stati</span>
+              <button
+                v-if="statusFilter.length > 0"
+                class="text-xs text-primary-500 hover:underline"
+                @click="clearStatuses"
+              >
+                Rimuovi tutti
+              </button>
+            </div>
+            <div class="p-1">
+              <label
+                v-for="o in statusOptions"
+                :key="o.value"
+                class="flex items-center gap-2 px-3 py-2 text-sm rounded hover:bg-[var(--ui-bg-elevated)] cursor-pointer"
+              >
+                <UCheckbox
+                  :model-value="statusFilter.includes(o.value)"
+                  @update:model-value="toggleStatus(o.value)"
+                />
+                {{ o.label }}
+              </label>
+            </div>
+          </div>
+        </template>
+      </UPopover>
 
       <!-- Priority Filter -->
-      <UDropdownMenu
+      <UPopover
         v-if="priorities.length"
-        :items="[
-          { label: 'Tutte', click: () => priorityFilter = '' },
-          ...priorityItems.map(p => ({ label: p.label, icon: p.icon, click: () => priorityFilter = p.value }))
-        ]"
+        v-model:open="priorityOpen"
       >
         <UButton
           color="neutral"
@@ -164,15 +242,36 @@ const getSortLabel = (value: string) => {
             Priorità
           </template>
         </UButton>
-      </UDropdownMenu>
+        <template #content>
+          <div class="p-1 min-w-[140px]">
+            <button
+              class="w-full flex items-center gap-2 px-3 py-2 text-sm text-left rounded hover:bg-[var(--ui-bg-elevated)]"
+              :class="{ 'bg-[var(--ui-bg-elevated)]': !priorityFilter }"
+              @click="selectPriority('')"
+            >
+              Tutte
+            </button>
+            <button
+              v-for="p in priorities"
+              :key="p"
+              class="w-full flex items-center gap-2 px-3 py-2 text-sm text-left rounded hover:bg-[var(--ui-bg-elevated)]"
+              :class="{ 'bg-[var(--ui-bg-elevated)]': priorityFilter === p }"
+              @click="selectPriority(p)"
+            >
+              <UIcon
+                :name="getPriorityIcon(p)"
+                class="w-4 h-4"
+              />
+              {{ p }}
+            </button>
+          </div>
+        </template>
+      </UPopover>
 
       <!-- Issue Type Filter -->
-      <UDropdownMenu
+      <UPopover
         v-if="issueTypes.length"
-        :items="[
-          { label: 'Tutti', click: () => issueTypeFilter = '' },
-          ...issueTypes.map(t => ({ label: t, click: () => issueTypeFilter = t }))
-        ]"
+        v-model:open="typeOpen"
       >
         <UButton
           color="neutral"
@@ -183,56 +282,157 @@ const getSortLabel = (value: string) => {
         >
           {{ issueTypeFilter || 'Tipo' }}
         </UButton>
-      </UDropdownMenu>
+        <template #content>
+          <div class="p-1 min-w-[140px]">
+            <button
+              class="w-full flex items-center gap-2 px-3 py-2 text-sm text-left rounded hover:bg-[var(--ui-bg-elevated)]"
+              :class="{ 'bg-[var(--ui-bg-elevated)]': !issueTypeFilter }"
+              @click="selectType('')"
+            >
+              Tutti
+            </button>
+            <button
+              v-for="t in issueTypes"
+              :key="t"
+              class="w-full flex items-center gap-2 px-3 py-2 text-sm text-left rounded hover:bg-[var(--ui-bg-elevated)]"
+              :class="{ 'bg-[var(--ui-bg-elevated)]': issueTypeFilter === t }"
+              @click="selectType(t)"
+            >
+              {{ t }}
+            </button>
+          </div>
+        </template>
+      </UPopover>
 
-      <!-- Assignee Filter -->
-      <UDropdownMenu
-        v-if="assignees.length"
-        :items="[
-          { label: 'Tutti', click: () => assigneeFilter = '' },
-          ...assignees.map(a => ({ label: a, click: () => assigneeFilter = a }))
-        ]"
-      >
+      <!-- Assignee Filter (Multi-select) -->
+      <UPopover v-model:open="assigneeOpen">
         <UButton
           color="neutral"
           variant="ghost"
           size="sm"
           trailing-icon="i-lucide-chevron-down"
-          :class="{ 'bg-[var(--ui-bg-elevated)] ring-1 ring-[var(--ui-border-accented)]': assigneeFilter }"
+          :class="{ 'bg-[var(--ui-bg-elevated)] ring-1 ring-[var(--ui-border-accented)]': assigneeFilter.length > 0 }"
         >
-          {{ assigneeFilter || 'Assegnatario' }}
+          <template v-if="assigneeFilter.length === 0">
+            Assegnatario
+          </template>
+          <template v-else-if="assigneeFilter.length === 1">
+            {{ assigneeFilter[0] === '__unassigned__' ? 'Non assegnato' : assigneeFilter[0] }}
+          </template>
+          <template v-else>
+            {{ assigneeFilter.length }} assegnatari
+          </template>
         </UButton>
-      </UDropdownMenu>
+        <template #content>
+          <div class="min-w-[200px]">
+            <div class="p-2 border-b border-[var(--ui-border)] flex items-center justify-between">
+              <span class="text-xs font-medium text-[var(--ui-text-muted)]">Assegnatari</span>
+              <button
+                v-if="assigneeFilter.length > 0"
+                class="text-xs text-primary-500 hover:underline"
+                @click="clearAssignees"
+              >
+                Rimuovi tutti
+              </button>
+            </div>
+            <div class="p-1 max-h-[300px] overflow-y-auto">
+              <!-- Non assegnato option -->
+              <label class="flex items-center gap-2 px-3 py-2 text-sm rounded hover:bg-[var(--ui-bg-elevated)] cursor-pointer">
+                <UCheckbox
+                  :model-value="assigneeFilter.includes('__unassigned__')"
+                  @update:model-value="toggleAssignee('__unassigned__')"
+                />
+                <UIcon
+                  name="i-lucide-user-x"
+                  class="w-4 h-4 text-[var(--ui-text-muted)]"
+                />
+                <span class="italic text-[var(--ui-text-muted)]">Non assegnato</span>
+              </label>
+              <div
+                v-if="assignees.length"
+                class="border-t border-[var(--ui-border)] my-1"
+              />
+              <label
+                v-for="a in assignees"
+                :key="a"
+                class="flex items-center gap-2 px-3 py-2 text-sm rounded hover:bg-[var(--ui-bg-elevated)] cursor-pointer"
+              >
+                <UCheckbox
+                  :model-value="assigneeFilter.includes(a)"
+                  @update:model-value="toggleAssignee(a)"
+                />
+                {{ a }}
+              </label>
+            </div>
+          </div>
+        </template>
+      </UPopover>
 
-      <!-- Label Filter -->
-      <UDropdownMenu
+      <!-- Label Filter (Multi-select) -->
+      <UPopover
         v-if="labels.length"
-        :items="[
-          { label: 'Tutte', click: () => labelFilter = '' },
-          ...labels.map(l => ({ label: l, click: () => labelFilter = l }))
-        ]"
+        v-model:open="labelOpen"
       >
         <UButton
           color="neutral"
           variant="ghost"
           size="sm"
           trailing-icon="i-lucide-chevron-down"
-          :class="{ 'bg-[var(--ui-bg-elevated)] ring-1 ring-[var(--ui-border-accented)]': labelFilter }"
+          :class="{ 'bg-[var(--ui-bg-elevated)] ring-1 ring-[var(--ui-border-accented)]': labelFilter.length > 0 }"
         >
           <UIcon
-            v-if="labelFilter"
+            v-if="labelFilter.length > 0"
             name="i-lucide-tag"
             class="w-3.5 h-3.5"
           />
-          {{ labelFilter || 'Label' }}
+          <template v-if="labelFilter.length === 0">
+            Label
+          </template>
+          <template v-else-if="labelFilter.length === 1">
+            {{ labelFilter[0] }}
+          </template>
+          <template v-else>
+            {{ labelFilter.length }} label
+          </template>
         </UButton>
-      </UDropdownMenu>
+        <template #content>
+          <div class="min-w-[200px]">
+            <div class="p-2 border-b border-[var(--ui-border)] flex items-center justify-between">
+              <span class="text-xs font-medium text-[var(--ui-text-muted)]">Labels</span>
+              <button
+                v-if="labelFilter.length > 0"
+                class="text-xs text-primary-500 hover:underline"
+                @click="clearLabels"
+              >
+                Rimuovi tutte
+              </button>
+            </div>
+            <div class="p-1 max-h-[300px] overflow-y-auto">
+              <label
+                v-for="l in labels"
+                :key="l"
+                class="flex items-center gap-2 px-3 py-2 text-sm rounded hover:bg-[var(--ui-bg-elevated)] cursor-pointer"
+              >
+                <UCheckbox
+                  :model-value="labelFilter.includes(l)"
+                  @update:model-value="toggleLabel(l)"
+                />
+                <UIcon
+                  name="i-lucide-tag"
+                  class="w-3.5 h-3.5 text-[var(--ui-text-muted)]"
+                />
+                {{ l }}
+              </label>
+            </div>
+          </div>
+        </template>
+      </UPopover>
 
       <!-- Divider -->
       <div class="h-5 w-px bg-[var(--ui-border)]" />
 
       <!-- Sort -->
-      <UDropdownMenu :items="sortOptions.map(o => ({ label: o.label, click: () => sortBy = o.value }))">
+      <UPopover v-model:open="sortOpen">
         <UButton
           color="neutral"
           variant="ghost"
@@ -241,7 +441,20 @@ const getSortLabel = (value: string) => {
         >
           {{ getSortLabel(sortBy) }}
         </UButton>
-      </UDropdownMenu>
+        <template #content>
+          <div class="p-1 min-w-[160px]">
+            <button
+              v-for="o in sortOptions"
+              :key="o.value"
+              class="w-full flex items-center gap-2 px-3 py-2 text-sm text-left rounded hover:bg-[var(--ui-bg-elevated)]"
+              :class="{ 'bg-[var(--ui-bg-elevated)]': sortBy === o.value }"
+              @click="selectSort(o.value)"
+            >
+              {{ o.label }}
+            </button>
+          </div>
+        </template>
+      </UPopover>
 
       <UTooltip :text="sortOrder === 'asc' ? 'Crescente' : 'Decrescente'">
         <UButton
@@ -284,13 +497,14 @@ const getSortLabel = (value: string) => {
       <span class="text-xs text-[var(--ui-text-muted)]">Filtri:</span>
 
       <UBadge
-        v-if="statusFilter && statusFilter !== 'all'"
+        v-for="s in statusFilter"
+        :key="`status-${s}`"
         color="primary"
         variant="subtle"
         size="sm"
         class="gap-1 pr-1"
       >
-        Stato: {{ getStatusLabel(statusFilter) }}
+        {{ getStatusLabel(s) }}
         <UButton
           color="primary"
           variant="ghost"
@@ -298,7 +512,7 @@ const getSortLabel = (value: string) => {
           icon="i-lucide-x"
           class="-mr-1"
           aria-label="Rimuovi filtro stato"
-          @click="statusFilter = 'all'"
+          @click="toggleStatus(s)"
         />
       </UBadge>
 
@@ -345,17 +559,18 @@ const getSortLabel = (value: string) => {
       </UBadge>
 
       <UBadge
-        v-if="assigneeFilter"
+        v-for="a in assigneeFilter"
+        :key="`assignee-${a}`"
         color="primary"
         variant="subtle"
         size="sm"
         class="gap-1 pr-1"
       >
         <UIcon
-          name="i-lucide-user"
+          :name="a === '__unassigned__' ? 'i-lucide-user-x' : 'i-lucide-user'"
           class="w-3 h-3"
         />
-        {{ assigneeFilter }}
+        {{ a === '__unassigned__' ? 'Non assegnato' : a }}
         <UButton
           color="primary"
           variant="ghost"
@@ -363,12 +578,13 @@ const getSortLabel = (value: string) => {
           icon="i-lucide-x"
           class="-mr-1"
           aria-label="Rimuovi filtro assegnatario"
-          @click="assigneeFilter = ''"
+          @click="toggleAssignee(a)"
         />
       </UBadge>
 
       <UBadge
-        v-if="labelFilter"
+        v-for="l in labelFilter"
+        :key="`label-${l}`"
         color="primary"
         variant="subtle"
         size="sm"
@@ -378,7 +594,7 @@ const getSortLabel = (value: string) => {
           name="i-lucide-tag"
           class="w-3 h-3"
         />
-        {{ labelFilter }}
+        {{ l }}
         <UButton
           color="primary"
           variant="ghost"
@@ -386,7 +602,7 @@ const getSortLabel = (value: string) => {
           icon="i-lucide-x"
           class="-mr-1"
           aria-label="Rimuovi filtro label"
-          @click="labelFilter = ''"
+          @click="toggleLabel(l)"
         />
       </UBadge>
     </div>

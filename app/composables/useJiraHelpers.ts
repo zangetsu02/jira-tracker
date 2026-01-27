@@ -53,6 +53,24 @@ export interface JiraCommentsResponse {
   comments: JiraComment[]
 }
 
+export interface JiraTransition {
+  id: string
+  name: string
+  to: {
+    id: string
+    name: string
+    statusCategory: {
+      id: number
+      key: string
+      name: string
+    }
+  }
+}
+
+export interface JiraTransitionsResponse {
+  transitions: JiraTransition[]
+}
+
 // Composable
 export function useJiraHelpers() {
   // Helper to get assignee name from string or object

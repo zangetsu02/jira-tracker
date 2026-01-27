@@ -10,9 +10,9 @@ const { getAssigneeName } = useJiraHelpers()
 const selectedIssueKey = ref<string | null>((route.query.issue as string) || null)
 const searchQuery = ref((route.query.search as string) || '')
 const searchQueryDebounced = refDebounced(searchQuery, 300)
-const statusFilter = ref<string>((route.query.status as string) || 'all')
-const labelFilter = ref<string>((route.query.label as string) || '')
-const assigneeFilter = ref<string>((route.query.assignee as string) || '')
+const statusFilter = ref<string[]>(route.query.status ? (route.query.status as string).split(',').filter(Boolean) : [])
+const labelFilter = ref<string[]>(route.query.label ? (route.query.label as string).split(',').filter(Boolean) : [])
+const assigneeFilter = ref<string[]>(route.query.assignee ? (route.query.assignee as string).split(',').filter(Boolean) : [])
 const priorityFilter = ref<string>((route.query.priority as string) || '')
 const issueTypeFilter = ref<string>((route.query.type as string) || '')
 const sortBy = ref<string>((route.query.sort as string) || 'updated')
@@ -24,9 +24,9 @@ const updateQueryParams = () => {
 
   if (selectedIssueKey.value) query.issue = selectedIssueKey.value
   if (searchQuery.value) query.search = searchQuery.value
-  if (statusFilter.value && statusFilter.value !== 'all') query.status = statusFilter.value
-  if (labelFilter.value) query.label = labelFilter.value
-  if (assigneeFilter.value) query.assignee = assigneeFilter.value
+  if (statusFilter.value.length > 0) query.status = statusFilter.value.join(',')
+  if (labelFilter.value.length > 0) query.label = labelFilter.value.join(',')
+  if (assigneeFilter.value.length > 0) query.assignee = assigneeFilter.value.join(',')
   if (priorityFilter.value) query.priority = priorityFilter.value
   if (issueTypeFilter.value) query.type = issueTypeFilter.value
   if (sortBy.value && sortBy.value !== 'updated') query.sort = sortBy.value
@@ -49,20 +49,17 @@ watch([
   updateQueryParams()
 }, { deep: true })
 
-// Fetch issues list
+// Fetch issues list (we fetch all and filter client-side for multi-status)
 const { data: issuesData, pending: loadingIssues, error: issuesError, refresh: refreshIssues } = await useFetch<JiraIssuesResponse>(
   () => {
     const params = new URLSearchParams()
-    if (statusFilter.value !== 'all') {
-      params.set('status', statusFilter.value)
-    }
     if (searchQueryDebounced.value) {
       params.set('search', searchQueryDebounced.value)
     }
     const queryString = params.toString()
     return `/api/jira/issues${queryString ? `?${queryString}` : ''}`
   },
-  { watch: [searchQueryDebounced, statusFilter] }
+  { watch: [searchQueryDebounced] }
 )
 
 // Filtered and sorted issues (client-side filtering for additional filters)
@@ -70,16 +67,49 @@ const filteredIssues = computed(() => {
   if (!issuesData.value?.issues) return []
 
   let issues = issuesData.value.issues.filter((issue) => {
-    // Label filter
-    if (labelFilter.value && !issue.labels.includes(labelFilter.value)) {
-      return false
+    // Status filter (multi-select: issue status must match ANY selected status)
+    if (statusFilter.value.length > 0) {
+      const issueStatusLower = issue.status.toLowerCase().trim()
+      const matchesStatus = statusFilter.value.some((s) => {
+        if (s === 'open') {
+          return ['open', 'to do', 'backlog', 'new', 'aperto', 'da fare', 'todo'].includes(issueStatusLower)
+        }
+        if (s === 'in_progress') {
+          return ['in progress', 'in development', 'in review', 'in corso', 'review', 'in lavorazione'].includes(issueStatusLower)
+        }
+        if (s === 'done') {
+          return ['done', 'closed', 'resolved', 'fatto', 'chiuso', 'risolto', 'completato'].includes(issueStatusLower)
+        }
+        return issueStatusLower === s.toLowerCase()
+      })
+      if (!matchesStatus) return false
     }
-    // Assignee filter
-    if (assigneeFilter.value) {
+    // Label filter (multi-select: issue must have ALL selected labels)
+    if (labelFilter.value.length > 0) {
+      const hasAllLabels = labelFilter.value.every(l => issue.labels.includes(l))
+      if (!hasAllLabels) return false
+    }
+    // Assignee filter (multi-select: issue assignee must match ANY selected assignee, or unassigned)
+    if (assigneeFilter.value.length > 0) {
       const assigneeName = getAssigneeName(issue.assignee)
-      if (!assigneeName || !assigneeName.toLowerCase().includes(assigneeFilter.value.toLowerCase())) {
-        return false
+      const includesUnassigned = assigneeFilter.value.includes('__unassigned__')
+      const otherAssignees = assigneeFilter.value.filter(a => a !== '__unassigned__')
+
+      let matchesAssignee = false
+
+      // Check if matches "unassigned"
+      if (includesUnassigned && !assigneeName) {
+        matchesAssignee = true
       }
+
+      // Check if matches any of the selected assignees
+      if (otherAssignees.length > 0 && assigneeName) {
+        if (otherAssignees.some(a => assigneeName.toLowerCase() === a.toLowerCase())) {
+          matchesAssignee = true
+        }
+      }
+
+      if (!matchesAssignee) return false
     }
     // Priority filter
     if (priorityFilter.value && issue.priority !== priorityFilter.value) {
@@ -208,9 +238,9 @@ const selectIssue = (key: string) => {
 }
 
 const clearFilters = () => {
-  statusFilter.value = 'all'
-  labelFilter.value = ''
-  assigneeFilter.value = ''
+  statusFilter.value = []
+  labelFilter.value = []
+  assigneeFilter.value = []
   priorityFilter.value = ''
   issueTypeFilter.value = ''
 }
@@ -221,9 +251,9 @@ const handleRefresh = async () => {
 }
 
 const hasActiveFilters = computed(() =>
-  (statusFilter.value && statusFilter.value !== 'all')
-  || labelFilter.value
-  || assigneeFilter.value
+  statusFilter.value.length > 0
+  || labelFilter.value.length > 0
+  || assigneeFilter.value.length > 0
   || priorityFilter.value
   || issueTypeFilter.value
 )
