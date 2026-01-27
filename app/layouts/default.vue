@@ -113,8 +113,8 @@ onMounted(() => {
     </aside>
 
     <!-- Main Content -->
-    <main class="ml-[var(--sidebar-width)] min-h-screen">
-      <div class="px-8 py-8 lg:px-12 lg:py-10">
+    <main class="ml-[var(--sidebar-width)] h-screen flex flex-col">
+      <div class="flex-1 min-h-0 px-8 py-8 lg:px-12 lg:py-10 flex flex-col">
         <slot />
       </div>
     </main>

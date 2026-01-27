@@ -13,6 +13,10 @@ const searchQueryDebounced = refDebounced(searchQuery, 300)
 const statusFilter = ref<string>((route.query.status as string) || 'all')
 const labelFilter = ref<string>((route.query.label as string) || '')
 const assigneeFilter = ref<string>((route.query.assignee as string) || '')
+const priorityFilter = ref<string>((route.query.priority as string) || '')
+const issueTypeFilter = ref<string>((route.query.type as string) || '')
+const sortBy = ref<string>((route.query.sort as string) || 'updated')
+const sortOrder = ref<string>((route.query.order as string) || 'desc')
 
 // Sync state to query params
 const updateQueryParams = () => {
@@ -23,11 +27,25 @@ const updateQueryParams = () => {
   if (statusFilter.value && statusFilter.value !== 'all') query.status = statusFilter.value
   if (labelFilter.value) query.label = labelFilter.value
   if (assigneeFilter.value) query.assignee = assigneeFilter.value
+  if (priorityFilter.value) query.priority = priorityFilter.value
+  if (issueTypeFilter.value) query.type = issueTypeFilter.value
+  if (sortBy.value && sortBy.value !== 'updated') query.sort = sortBy.value
+  if (sortOrder.value && sortOrder.value !== 'desc') query.order = sortOrder.value
   
   router.replace({ query })
 }
 
-watch([selectedIssueKey, searchQueryDebounced, statusFilter, labelFilter, assigneeFilter], () => {
+watch([
+  selectedIssueKey, 
+  searchQueryDebounced, 
+  statusFilter, 
+  labelFilter, 
+  assigneeFilter, 
+  priorityFilter, 
+  issueTypeFilter, 
+  sortBy, 
+  sortOrder
+], () => {
   updateQueryParams()
 }, { deep: true })
 
@@ -47,22 +65,61 @@ const { data: issuesData, pending: loadingIssues, error: issuesError, refresh: r
   { watch: [searchQueryDebounced, statusFilter] }
 )
 
-// Filtered issues (client-side filtering for label and assignee)
+// Filtered and sorted issues (client-side filtering for additional filters)
 const filteredIssues = computed(() => {
   if (!issuesData.value?.issues) return []
 
-  return issuesData.value.issues.filter(issue => {
+  let issues = issuesData.value.issues.filter(issue => {
+    // Label filter
     if (labelFilter.value && !issue.labels.includes(labelFilter.value)) {
       return false
     }
+    // Assignee filter
     if (assigneeFilter.value) {
       const assigneeName = getAssigneeName(issue.assignee)
       if (!assigneeName || !assigneeName.toLowerCase().includes(assigneeFilter.value.toLowerCase())) {
         return false
       }
     }
+    // Priority filter
+    if (priorityFilter.value && issue.priority !== priorityFilter.value) {
+      return false
+    }
+    // Issue type filter
+    if (issueTypeFilter.value && issue.issueType !== issueTypeFilter.value) {
+      return false
+    }
     return true
   })
+
+  // Sort issues
+  issues = [...issues].sort((a, b) => {
+    let comparison = 0
+    
+    switch (sortBy.value) {
+      case 'updated':
+        comparison = new Date(b.updated).getTime() - new Date(a.updated).getTime()
+        break
+      case 'created':
+        comparison = new Date(b.created).getTime() - new Date(a.created).getTime()
+        break
+      case 'priority':
+        const priorityOrder = ['Highest', 'High', 'Medium', 'Low', 'Lowest']
+        const aPriority = priorityOrder.indexOf(a.priority || 'Medium')
+        const bPriority = priorityOrder.indexOf(b.priority || 'Medium')
+        comparison = aPriority - bPriority
+        break
+      case 'key':
+        comparison = a.key.localeCompare(b.key)
+        break
+      default:
+        comparison = 0
+    }
+    
+    return sortOrder.value === 'asc' ? comparison : -comparison
+  })
+
+  return issues
 })
 
 // Unique labels from all issues
@@ -84,6 +141,30 @@ const availableAssignees = computed(() => {
     if (name) assignees.add(name)
   })
   return Array.from(assignees).sort()
+})
+
+// Unique priorities from all issues
+const availablePriorities = computed(() => {
+  if (!issuesData.value?.issues) return []
+  const priorities = new Set<string>()
+  issuesData.value.issues.forEach(issue => {
+    if (issue.priority) priorities.add(issue.priority)
+  })
+  // Sort by priority order
+  const priorityOrder = ['Highest', 'High', 'Medium', 'Low', 'Lowest']
+  return Array.from(priorities).sort((a, b) => 
+    priorityOrder.indexOf(a) - priorityOrder.indexOf(b)
+  )
+})
+
+// Unique issue types from all issues
+const availableIssueTypes = computed(() => {
+  if (!issuesData.value?.issues) return []
+  const types = new Set<string>()
+  issuesData.value.issues.forEach(issue => {
+    if (issue.issueType) types.add(issue.issueType)
+  })
+  return Array.from(types).sort()
 })
 
 // Selected issue detail
@@ -129,6 +210,8 @@ const selectIssue = (key: string) => {
 const clearFilters = () => {
   labelFilter.value = ''
   assigneeFilter.value = ''
+  priorityFilter.value = ''
+  issueTypeFilter.value = ''
 }
 
 const handleRefresh = async () => {
@@ -136,11 +219,16 @@ const handleRefresh = async () => {
   await refreshIssues()
 }
 
-const hasActiveFilters = computed(() => labelFilter.value || assigneeFilter.value)
+const hasActiveFilters = computed(() => 
+  labelFilter.value || 
+  assigneeFilter.value || 
+  priorityFilter.value || 
+  issueTypeFilter.value
+)
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
+  <div class="flex-1 min-h-0 flex flex-col">
     <!-- Header -->
     <header class="shrink-0 mb-6">
       <div class="flex items-center justify-between">
@@ -151,35 +239,52 @@ const hasActiveFilters = computed(() => labelFilter.value || assigneeFilter.valu
           <div>
             <h1 class="text-2xl font-semibold">Jira Issues</h1>
             <p class="text-sm text-[var(--ui-text-muted)]">
-              <span class="font-medium text-[var(--ui-text)]">{{ filteredIssues.length }}</span>
-              di {{ issuesData?.total || 0 }} issue
+              Gestione e monitoraggio issue
             </p>
           </div>
         </div>
-        <UButton
-          icon="i-lucide-refresh-cw"
-          color="neutral"
-          variant="ghost"
-          :loading="loadingIssues"
-          @click="refreshIssues()"
-        >
-          Aggiorna
-        </UButton>
+        <div class="flex items-center gap-2">
+          <UKbd>⌘</UKbd>
+          <UKbd>K</UKbd>
+          <span class="text-xs text-[var(--ui-text-muted)] ml-1">per cercare</span>
+          <UButton
+            icon="i-lucide-refresh-cw"
+            color="neutral"
+            variant="ghost"
+            :loading="loadingIssues"
+            aria-label="Aggiorna lista issue"
+            class="ml-4"
+            @click="refreshIssues()"
+          >
+            Aggiorna
+          </UButton>
+        </div>
       </div>
     </header>
 
     <!-- Main Layout -->
-    <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6">
+    <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-6">
       <!-- Sidebar -->
-      <UCard class="flex flex-col overflow-hidden" :ui="{ body: 'p-0 flex-1 flex flex-col overflow-hidden' }">
+      <aside 
+        class="flex flex-col min-h-0 overflow-hidden border border-[var(--ui-border)] bg-[var(--ui-bg)]"
+        aria-label="Lista issue"
+      >
         <!-- Filters -->
         <JiraIssueFilters
           v-model:search="searchQuery"
           v-model:status="statusFilter"
           v-model:label="labelFilter"
           v-model:assignee="assigneeFilter"
+          v-model:priority="priorityFilter"
+          v-model:issue-type="issueTypeFilter"
+          v-model:sort-by="sortBy"
+          v-model:sort-order="sortOrder"
           :labels="availableLabels"
           :assignees="availableAssignees"
+          :priorities="availablePriorities"
+          :issue-types="availableIssueTypes"
+          :total-count="issuesData?.total || 0"
+          :filtered-count="filteredIssues.length"
           :loading="loadingIssues"
           @clear-filters="clearFilters"
         />
@@ -194,16 +299,19 @@ const hasActiveFilters = computed(() => labelFilter.value || assigneeFilter.valu
           @select="selectIssue"
           @clear-filters="clearFilters"
         />
-      </UCard>
+      </aside>
 
       <!-- Detail Panel -->
-      <UCard class="flex flex-col overflow-hidden" :ui="{ body: 'p-0 flex-1 flex flex-col overflow-hidden' }">
+      <main 
+        class="flex flex-col overflow-hidden border border-[var(--ui-border)] bg-[var(--ui-bg)]"
+        aria-label="Dettaglio issue"
+      >
         <JiraIssueDetail
           :issue="selectedIssue"
           :loading="loadingDetail && !!selectedIssueKey"
           @refresh="handleRefresh"
         />
-      </UCard>
+      </main>
     </div>
   </div>
 </template>
