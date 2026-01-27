@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { useDB } from '~~/server/utils/db'
-import { microservices, analysisResults } from '~~/server/database/schema'
+import { microservices, analysisResults, usecases } from '~~/server/database/schema'
 import { analyzeMicroservice } from '~~/server/utils/claude'
 import {
   findLegacyPath,
@@ -31,10 +31,16 @@ export default defineEventHandler(async (event) => {
   const legacyPath = await findLegacyPath(ms.path)
   const pdfPath = ms.pdfPath || null
 
-  if (!pdfPath && !legacyPath) {
+  // Fetch use cases
+  const msUsecases = await db
+    .select({ id: usecases.id, code: usecases.code })
+    .from(usecases)
+    .where(eq(usecases.microserviceId, ms.id))
+
+  if (!pdfPath && !legacyPath && msUsecases.length === 0) {
     throw createError({
       statusCode: 400,
-      message: 'Nessun PDF o codice legacy trovato. Carica un PDF o assicurati che esista la cartella docs/aspx nel microservizio.'
+      message: 'Nessun PDF, codice legacy o use case trovato.'
     })
   }
 
@@ -44,6 +50,14 @@ export default defineEventHandler(async (event) => {
 
     // Run analysis
     const result = await analyzeMicroservice(ms.path, legacyPath, pdfPath)
+
+    // Collect use case codes with issues
+    const usecaseCodesWithIssues = new Set<string>()
+    for (const issue of result.issues) {
+      for (const code of issue.relatedUseCases) {
+        usecaseCodesWithIssues.add(code.toUpperCase())
+      }
+    }
 
     // Save issues as analysis results
     const savedResults = await Promise.all(
@@ -62,6 +76,21 @@ export default defineEventHandler(async (event) => {
         return saved
       })
     )
+
+    // Save implemented status for use cases without issues
+    for (const uc of msUsecases) {
+      const ucCode = (uc.code || '').toUpperCase()
+      if (ucCode && !usecaseCodesWithIssues.has(ucCode)) {
+        await db.insert(analysisResults).values({
+          microserviceId: ms.id,
+          usecaseId: uc.id,
+          status: 'implemented',
+          confidence: 'high',
+          evidence: `Use case ${uc.code} implementato correttamente`,
+          notes: null
+        })
+      }
+    }
 
     // Update microservice
     await db

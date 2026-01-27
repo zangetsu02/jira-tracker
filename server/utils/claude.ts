@@ -58,7 +58,15 @@ async function executeClaudeCli(
     const dirs = [...new Set(files.map(f => f.substring(0, f.lastIndexOf('/'))))]
     const addDirArgs = dirs.flatMap(d => ['--add-dir', d])
 
-    const args = ['-p', prompt, '--output-format', 'stream-json', '--verbose', ...addDirArgs]
+    const args = [
+      '-p', prompt,
+      '--output-format', 'stream-json',
+      '--verbose',
+      '--permission-mode', 'bypassPermissions',
+      '--model', 'sonnet',
+      '--max-budget-usd', '5',
+      ...addDirArgs
+    ]
 
     console.log('[executeClaudeCli] Running claude with args:', args.slice(0, 5).join(' '), '...')
     console.log('[executeClaudeCli] Allowing dirs:', dirs)
@@ -66,9 +74,9 @@ async function executeClaudeCli(
     onProgress?.('Avvio analisi Claude...', 'starting')
 
     const proc = spawn('claude', args, {
-      stdio: ['inherit', 'pipe', 'pipe'],
+      stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env, ANTHROPIC_API_KEY: '', TERM: 'dumb' },
-      cwd: process.env.HOME || '/home/zangetsu'
+      cwd: process.env.HOME || '/home/palladinic'
     })
 
     let fullText = ''
@@ -94,30 +102,44 @@ async function executeClaudeCli(
         if (message.type === 'result') {
           const resultMsg = message as ClaudeResultMessage
           console.log('[Claude] Result message, result length:', resultMsg.result?.length ?? 0)
-          if (resultMsg.result && resultMsg.result.length > MIN_RESPONSE_LENGTH) {
-            fullText = resultMsg.result
-            console.log('[Claude] Using result as fullText, length:', fullText.length)
+          // Always use result if present - it's the final response
+          if (resultMsg.result) {
+            // Only use result if it contains JSON or is longer than accumulated text
+            if (resultMsg.result.includes('{') || resultMsg.result.length > fullText.length) {
+              fullText = resultMsg.result
+              console.log('[Claude] Using result as fullText, length:', fullText.length)
+            } else {
+              console.log('[Claude] Ignoring short result, keeping accumulated text, length:', fullText.length)
+            }
             if (resultMsg.cost_usd) {
               onProgress?.(`Costo: $${resultMsg.cost_usd.toFixed(4)}`, 'cost')
             }
           }
         } else if (message.type === 'assistant') {
-          const text = extractAssistantText(message as ClaudeAssistantMessage)
+          const assistantMsg = message as ClaudeAssistantMessage
+          const text = extractAssistantText(assistantMsg)
           if (text) {
             fullText += text
             console.log('[Claude] Appending assistant text, total length:', fullText.length)
+            console.log('[Claude] Text preview:', text.substring(0, 200))
             onProgress?.(text.substring(0, 100), 'analyzing')
+          } else {
+            // Log what content types we're seeing
+            const contentTypes = assistantMsg.message?.content?.map(c => c.type) || []
+            console.log('[Claude] Assistant message without text, content types:', contentTypes)
           }
         }
       }
     })
 
-    proc.stderr.on('data', () => {
-      // Ignore stderr - Claude outputs progress there
+    proc.stderr.on('data', (data: Buffer) => {
+      // Log stderr for debugging
+      console.log('[Claude stderr]', data.toString().substring(0, 200))
     })
 
     proc.on('close', (code) => {
       clearTimeout(timeout)
+      console.log('[Claude] Process closed with code:', code, 'fullText length:', fullText.length)
       if (fullText.length > 0) {
         onProgress?.('Analisi completata', 'complete')
         resolve(fullText)
@@ -254,7 +276,12 @@ export async function analyzeMicroservice(
   onProgress?.('Preparazione prompt...', 'preparing')
   onProgress?.(`Prompt length: ${prompt.length} chars`, 'info')
 
-  const files = pdfPath ? [pdfPath] : []
+  // Include all paths Claude needs to read
+  const files: string[] = []
+  files.push(microservicePath) // microservice directory
+  if (legacyPath) files.push(legacyPath)
+  if (pdfPath) files.push(pdfPath)
+
   const response = await executeClaudeCli(prompt, files, onProgress)
 
   onProgress?.('Parsing risposta...', 'parsing')

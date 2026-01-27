@@ -60,11 +60,15 @@ Restituisci ESCLUSIVAMENTE un oggetto JSON valido con questa struttura esatta:
 {"issues":[{"code":"ISSUE-001","title":"Titolo","type":"missing_implementation","severity":"high","priority":"high","description":"Descrizione","relatedUseCases":["UC-001"],"legacyReference":null,"microserviceReference":"src/file.ts:45","acceptanceCriteria":["Criterio 1"],"suggestedLabels":["backend"],"estimatedEffort":"M"}]}
 
 REGOLE CRITICHE:
+- PRIMA leggi tutti i file necessari usando il tool Read
+- DOPO aver analizzato, genera IMMEDIATAMENTE il JSON
 - Output SOLO JSON, nessun testo prima o dopo
 - Nessun markdown, nessun code fence, nessun commento
 - JSON deve iniziare con { e terminare con }
+- NON scrivere frasi come "Based on my analysis..." - vai direttamente al JSON
 - Usa null per campi non applicabili
-- In relatedUseCases usa i codici degli use case forniti sopra`
+- In relatedUseCases usa i codici degli use case forniti sopra
+- Se non ci sono issue, restituisci {"issues":[]}`
 
 /**
  * Build analysis prompt from template

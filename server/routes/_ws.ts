@@ -205,7 +205,7 @@ async function handleAnalysis(
 
     sendStatus(peer, 'saving', `Salvataggio ${result.issues.length} issue...`, 98)
 
-    await saveAnalysisResults(db, ms.id, result)
+    await saveAnalysisResults(db, ms.id, result, msUsecases)
     await updateMicroservice(db, ms.id, result, legacyPath)
 
     peer.send(JSON.stringify({
@@ -247,8 +247,18 @@ async function saveUseCases(
 async function saveAnalysisResults(
   db: Awaited<ReturnType<typeof useDB>>,
   microserviceId: number,
-  result: IssuesOnlyResult
+  result: IssuesOnlyResult,
+  msUsecases: { id: number, code: string | null }[]
 ): Promise<void> {
+  // Collect all use case codes that have issues
+  const usecaseCodesWithIssues = new Set<string>()
+  for (const issue of result.issues) {
+    for (const code of issue.relatedUseCases) {
+      usecaseCodesWithIssues.add(code.toUpperCase())
+    }
+  }
+
+  // Save issues (problems found)
   for (const issue of result.issues) {
     await db.insert(analysisResults).values({
       microserviceId,
@@ -258,6 +268,21 @@ async function saveAnalysisResults(
       evidence: issue.title,
       notes: buildJiraDescription(issue)
     })
+  }
+
+  // Save implemented status for use cases without issues
+  for (const uc of msUsecases) {
+    const ucCode = (uc.code || '').toUpperCase()
+    if (ucCode && !usecaseCodesWithIssues.has(ucCode)) {
+      await db.insert(analysisResults).values({
+        microserviceId,
+        usecaseId: uc.id,
+        status: 'implemented',
+        confidence: 'high',
+        evidence: `Use case ${uc.code} implementato correttamente`,
+        notes: null
+      })
+    }
   }
 }
 

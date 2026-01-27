@@ -285,10 +285,10 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
       v-else-if="data"
       class="space-y-6"
     >
-      <!-- Stats Bento Grid -->
-      <div class="bento-grid">
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <!-- Total -->
-        <div class="bento-item bento-item--span-3 p-6 animate-slide-up stagger-1">
+        <div class="bento-item p-6 animate-slide-up stagger-1">
           <div class="flex items-start justify-between mb-4">
             <p class="text-xs font-semibold uppercase tracking-wider text-[var(--ui-text-muted)]">
               Totale
@@ -300,7 +300,7 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
               />
             </div>
           </div>
-          <p class="text-5xl font-display">
+          <p class="text-4xl lg:text-5xl font-display">
             {{ data.summary.total }}
           </p>
           <p class="text-xs text-[var(--ui-text-muted)] mt-2">
@@ -309,7 +309,7 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
         </div>
 
         <!-- Implemented -->
-        <div class="bento-item bento-item--span-3 p-6 animate-slide-up stagger-2">
+        <div class="bento-item p-6 animate-slide-up stagger-2">
           <div class="flex items-start justify-between mb-4">
             <p class="text-xs font-semibold uppercase tracking-wider text-[var(--ui-text-muted)]">
               Implementati
@@ -321,7 +321,7 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
               />
             </div>
           </div>
-          <p class="text-5xl font-display text-[var(--ui-success)]">
+          <p class="text-4xl lg:text-5xl font-display text-[var(--ui-success)]">
             {{ data.summary.implemented }}
           </p>
           <div class="mt-3 h-2 bg-[var(--ui-bg-muted)] overflow-hidden">
@@ -333,7 +333,7 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
         </div>
 
         <!-- Partial -->
-        <div class="bento-item bento-item--span-3 p-6 animate-slide-up stagger-3">
+        <div class="bento-item p-6 animate-slide-up stagger-3">
           <div class="flex items-start justify-between mb-4">
             <p class="text-xs font-semibold uppercase tracking-wider text-[var(--ui-text-muted)]">
               Parziali
@@ -345,7 +345,7 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
               />
             </div>
           </div>
-          <p class="text-5xl font-display text-[var(--ui-warning)]">
+          <p class="text-4xl lg:text-5xl font-display text-[var(--ui-warning)]">
             {{ data.summary.partial }}
           </p>
           <div class="mt-3 h-2 bg-[var(--ui-bg-muted)] overflow-hidden">
@@ -357,7 +357,7 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
         </div>
 
         <!-- Missing -->
-        <div class="bento-item bento-item--span-3 p-6 animate-slide-up stagger-4">
+        <div class="bento-item p-6 animate-slide-up stagger-4">
           <div class="flex items-start justify-between mb-4">
             <p class="text-xs font-semibold uppercase tracking-wider text-[var(--ui-text-muted)]">
               Mancanti
@@ -369,7 +369,7 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
               />
             </div>
           </div>
-          <p class="text-5xl font-display text-[var(--ui-error)]">
+          <p class="text-4xl lg:text-5xl font-display text-[var(--ui-error)]">
             {{ data.summary.missing }}
           </p>
           <div class="mt-3 h-2 bg-[var(--ui-bg-muted)] overflow-hidden">
@@ -379,10 +379,34 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
             />
           </div>
         </div>
+
+        <!-- Unclear -->
+        <div class="bento-item p-6 animate-slide-up stagger-5">
+          <div class="flex items-start justify-between mb-4">
+            <p class="text-xs font-semibold uppercase tracking-wider text-[var(--ui-text-muted)]">
+              Non Chiari
+            </p>
+            <div class="w-10 h-10 bg-[var(--ui-bg-muted)] flex items-center justify-center">
+              <UIcon
+                name="i-lucide-help-circle"
+                class="w-5 h-5 text-[var(--ui-text-muted)]"
+              />
+            </div>
+          </div>
+          <p class="text-4xl lg:text-5xl font-display text-[var(--ui-text-muted)]">
+            {{ data.summary.unclear }}
+          </p>
+          <div class="mt-3 h-2 bg-[var(--ui-bg-muted)] overflow-hidden">
+            <div
+              class="h-full bg-[var(--ui-text-dimmed)] transition-all duration-500"
+              :style="{ width: `${data.summary.total ? (data.summary.unclear / data.summary.total) * 100 : 0}%` }"
+            />
+          </div>
+        </div>
       </div>
 
       <!-- Results Section -->
-      <div class="bento-item bento-item--span-12 animate-slide-up stagger-5">
+      <div class="bento-item bento-item--span-12 animate-slide-up stagger-6">
         <!-- Section Header with Filter Tabs -->
         <div class="section-header flex-col sm:flex-row gap-4">
           <h2 class="section-header__title">
