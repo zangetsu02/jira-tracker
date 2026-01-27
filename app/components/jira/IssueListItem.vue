@@ -20,160 +20,315 @@ const {
   getPriorityIcon,
   formatRelativeDate 
 } = useJiraHelpers()
+
+const isStatusOpen = computed(() => {
+  const s = props.issue.status?.toLowerCase()
+  return s === 'aperto' || s === 'open' || s === 'to do'
+})
+
+const isStatusProgress = computed(() => {
+  const s = props.issue.status?.toLowerCase()
+  return s === 'in progress' || s === 'in corso'
+})
+
+const isStatusDone = computed(() => {
+  const s = props.issue.status?.toLowerCase()
+  return s === 'done' || s === 'chiuso' || s === 'resolved'
+})
 </script>
 
 <template>
   <button
     type="button"
-    class="issue-item w-full text-left p-4 transition-all duration-150 hover:bg-[var(--ui-bg-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-border-accented)]"
+    class="jira-issue-item w-full text-left"
     :class="[
-      selected
-        ? 'selected bg-[var(--ui-bg-accented)]'
-        : '',
-      focused && !selected
-        ? 'bg-[var(--ui-bg-muted)]'
-        : ''
+      selected ? 'jira-issue-item--selected' : '',
+      focused && !selected ? 'jira-issue-item--focused' : ''
     ]"
     :aria-current="selected ? 'true' : undefined"
     @click="$emit('select', issue.key)"
   >
-    <div class="flex items-start gap-3">
-      <!-- Status Indicator -->
-      <div class="shrink-0 mt-1">
-        <UTooltip :text="issue.status">
-          <span
-            class="block w-2.5 h-2.5 rounded-full ring-2 ring-[var(--ui-bg)] transition-transform"
-            :class="[
-              getStatusDotClass(issue.status),
-              selected ? 'scale-110' : ''
-            ]"
-            role="img"
-            :aria-label="`Stato: ${issue.status}`"
+    <!-- Header -->
+    <div class="jira-issue-item__header">
+      <span class="jira-issue-item__key">{{ issue.key }}</span>
+      <span
+        class="jira-issue-item__status"
+        :class="{
+          'jira-issue-item__status--open': isStatusOpen,
+          'jira-issue-item__status--progress': isStatusProgress,
+          'jira-issue-item__status--done': isStatusDone
+        }"
+      >
+        <span class="jira-issue-item__status-dot" />
+        {{ issue.status }}
+      </span>
+    </div>
+
+    <!-- Summary -->
+    <p class="jira-issue-item__summary" :title="issue.summary">
+      {{ issue.summary }}
+    </p>
+
+    <!-- Labels -->
+    <div v-if="issue.labels?.length" class="jira-issue-item__tags">
+      <span 
+        v-for="label in issue.labels.slice(0, 3)" 
+        :key="label"
+        class="jira-issue-item__tag"
+      >
+        {{ label }}
+      </span>
+      <span v-if="issue.labels.length > 3" class="jira-issue-item__tag jira-issue-item__tag--more">
+        +{{ issue.labels.length - 3 }}
+      </span>
+    </div>
+
+    <!-- Footer -->
+    <div class="jira-issue-item__footer">
+      <div class="jira-issue-item__meta">
+        <!-- Priority -->
+        <span 
+          v-if="issue.priority" 
+          class="jira-issue-item__priority-badge"
+          :class="`jira-issue-item__priority-badge--${issue.priority?.toLowerCase()}`"
+        >
+          <UIcon :name="getPriorityIcon(issue.priority)" class="w-3 h-3" />
+          <span>{{ issue.priority }}</span>
+        </span>
+        <!-- Assignee -->
+        <span 
+          v-if="getAssigneeName(issue.assignee)" 
+          class="jira-issue-item__assignee"
+        >
+          <UAvatar
+            :src="getAssigneeAvatar(issue.assignee)"
+            :alt="getAssigneeName(issue.assignee) || ''"
+            size="3xs"
           />
-        </UTooltip>
+          <span class="truncate">{{ getAssigneeName(issue.assignee) }}</span>
+        </span>
       </div>
-
-      <!-- Content -->
-      <div class="flex-1 min-w-0">
-        <!-- Header Row -->
-        <div class="flex items-center justify-between gap-2 mb-1">
-          <div class="flex items-center gap-2 min-w-0">
-            <code class="text-xs font-mono font-medium text-[var(--ui-text-muted)] shrink-0">
-              {{ issue.key }}
-            </code>
-            <UBadge
-              v-if="issue.issueType"
-              color="neutral"
-              variant="subtle"
-              size="xs"
-              class="shrink-0"
-            >
-              {{ issue.issueType }}
-            </UBadge>
-          </div>
-          <UBadge
-            v-if="issue.priority"
-            :color="getPriorityColor(issue.priority)"
-            variant="subtle"
-            size="xs"
-            class="shrink-0"
-          >
-            <UIcon :name="getPriorityIcon(issue.priority)" class="w-3 h-3" />
-            <span class="sr-only">Priorità: {{ issue.priority }}</span>
-          </UBadge>
-        </div>
-
-        <!-- Title -->
-        <p 
-          class="text-sm font-medium line-clamp-2 mb-2 text-[var(--ui-text)]"
-          :title="issue.summary"
-        >
-          {{ issue.summary }}
-        </p>
-
-        <!-- Meta Row -->
-        <div class="flex items-center justify-between gap-2">
-          <div class="flex items-center gap-3 text-xs text-[var(--ui-text-muted)] min-w-0">
-            <!-- Assignee -->
-            <span 
-              v-if="getAssigneeName(issue.assignee)" 
-              class="flex items-center gap-1.5 min-w-0"
-            >
-              <UAvatar
-                :src="getAssigneeAvatar(issue.assignee)"
-                :alt="getAssigneeName(issue.assignee) || ''"
-                size="3xs"
-                class="shrink-0"
-              />
-              <span class="truncate max-w-[100px]">
-                {{ getAssigneeName(issue.assignee) }}
-              </span>
-            </span>
-            <!-- Updated -->
-            <span class="flex items-center gap-1 shrink-0">
-              <UIcon name="i-lucide-clock" class="w-3 h-3" aria-hidden="true" />
-              <time :datetime="issue.updated">
-                {{ formatRelativeDate(issue.updated) }}
-              </time>
-            </span>
-          </div>
-
-          <!-- Status Badge (mobile) -->
-          <UBadge
-            :color="getStatusColor(issue.status)"
-            variant="subtle"
-            size="xs"
-            class="shrink-0 lg:hidden"
-          >
-            {{ issue.status }}
-          </UBadge>
-        </div>
-
-        <!-- Labels -->
-        <div 
-          v-if="issue.labels?.length" 
-          class="flex flex-wrap gap-1 mt-2"
-          role="list"
-          aria-label="Labels"
-        >
-          <UBadge
-            v-for="label in issue.labels.slice(0, 3)"
-            :key="label"
-            color="neutral"
-            variant="subtle"
-            size="xs"
-            role="listitem"
-          >
-            {{ label }}
-          </UBadge>
-          <UBadge
-            v-if="issue.labels.length > 3"
-            color="neutral"
-            variant="subtle"
-            size="xs"
-          >
-            +{{ issue.labels.length - 3 }}
-          </UBadge>
-        </div>
-      </div>
+      <!-- Updated -->
+      <span class="jira-issue-item__time">
+        <UIcon name="i-lucide-clock" class="w-3 h-3" />
+        <time :datetime="issue.updated">{{ formatRelativeDate(issue.updated) }}</time>
+      </span>
     </div>
   </button>
 </template>
 
 <style scoped>
-.issue-item {
-  /* Smooth transition for selection state */
-  transition: background-color 150ms ease, box-shadow 150ms ease;
+.jira-issue-item {
+  display: block;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--ui-border);
+  transition: all 0.15s ease;
+  position: relative;
 }
 
-.issue-item.selected {
-  /* Left accent border for selected item */
-  box-shadow: inset 3px 0 0 0 var(--ui-border-accented);
+.jira-issue-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--ui-info);
+  transform: scaleY(0);
+  transition: transform 0.2s ease;
+}
+
+.jira-issue-item:hover {
+  background: var(--ui-bg-muted);
+}
+
+.jira-issue-item:hover::before {
+  transform: scaleY(1);
+}
+
+.jira-issue-item--selected {
+  background: var(--ui-bg-accented);
+}
+
+.jira-issue-item--selected::before {
+  transform: scaleY(1);
+  background: var(--ui-info);
+}
+
+.jira-issue-item--focused {
+  background: var(--ui-bg-muted);
+}
+
+.jira-issue-item:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--ui-border-accented);
+}
+
+.jira-issue-item__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.jira-issue-item__key {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ui-info);
+  background: var(--ui-info-soft);
+  padding: 0.25rem 0.5rem;
+}
+
+.jira-issue-item__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.625rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.1875rem 0.375rem;
+  background: var(--ui-bg-muted);
+  color: var(--ui-text-muted);
+}
+
+.jira-issue-item__status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.jira-issue-item__status--open {
+  background: var(--ui-info-soft);
+  color: var(--ui-info);
+}
+
+.jira-issue-item__status--progress {
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
+
+.jira-issue-item__status--done {
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
+}
+
+.jira-issue-item__summary {
+  font-size: 0.8125rem;
+  color: var(--ui-text);
+  line-height: 1.4;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.jira-issue-item__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.625rem;
+}
+
+.jira-issue-item__tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.625rem;
+  font-weight: 500;
+  padding: 0.1875rem 0.5rem;
+  background: var(--ui-bg-muted);
+  color: var(--ui-text-muted);
+  border: 1px solid var(--ui-border);
+  transition: all 0.15s ease;
+}
+
+.jira-issue-item:hover .jira-issue-item__tag {
+  background: var(--ui-bg-accent);
+  border-color: var(--ui-border-accented);
+}
+
+.jira-issue-item__tag--more {
+  background: transparent;
+  color: var(--ui-text-dimmed);
+  border-style: dashed;
+}
+
+.jira-issue-item__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+  gap: 0.5rem;
+}
+
+.jira-issue-item__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.6875rem;
+  color: var(--ui-text-dimmed);
+  min-width: 0;
+}
+
+.jira-issue-item__priority-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  padding: 0.1875rem 0.5rem;
+  background: var(--ui-bg-muted);
+  color: var(--ui-text-muted);
+}
+
+.jira-issue-item__priority-badge--highest {
+  background: var(--ui-error-soft);
+  color: var(--ui-error);
+}
+
+.jira-issue-item__priority-badge--high {
+  background: var(--ui-error-soft);
+  color: var(--ui-error);
+}
+
+.jira-issue-item__priority-badge--medium {
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
+
+.jira-issue-item__priority-badge--low {
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
+}
+
+.jira-issue-item__priority-badge--lowest {
+  background: var(--ui-bg-muted);
+  color: var(--ui-text-muted);
+}
+
+.jira-issue-item__assignee {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  max-width: 120px;
+}
+
+.jira-issue-item__time {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.6875rem;
+  color: var(--ui-text-dimmed);
 }
 
 /* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
-  .issue-item {
+  .jira-issue-item,
+  .jira-issue-item::before {
     transition: none;
   }
 }

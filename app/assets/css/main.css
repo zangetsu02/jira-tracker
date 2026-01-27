@@ -211,6 +211,777 @@ h1, h2, h3, h4, h5, h6 {
   .bento-item--span-12 { grid-column: span 1; }
 }
 
+/* Report Card Component */
+.report-card {
+  position: relative;
+  overflow: visible;
+}
+
+.report-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--ui-border) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.report-card:hover::before {
+  opacity: 1;
+}
+
+.report-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.report-card__icon-wrapper {
+  position: relative;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ui-bg-muted);
+  color: var(--ui-text-muted);
+  transition: all 0.3s ease;
+}
+
+.report-card__icon-wrapper--success {
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
+}
+
+.report-card__icon-wrapper--warning {
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
+
+.report-card__icon-wrapper--error {
+  background: var(--ui-error-soft);
+  color: var(--ui-error);
+}
+
+.report-card__icon-wrapper--info {
+  background: var(--ui-info-soft);
+  color: var(--ui-info);
+}
+
+.report-card__icon-wrapper--primary {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.report-card__icon-wrapper--muted {
+  background: var(--ui-bg-muted);
+  color: var(--ui-text-dimmed);
+}
+
+.report-card__icon-ring {
+  position: absolute;
+  inset: -2px;
+  border: 1px solid currentColor;
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.group:hover .report-card__icon-ring {
+  opacity: 0.3;
+  inset: -4px;
+}
+
+.report-card__label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ui-text-muted);
+}
+
+.report-card__value-wrapper {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.report-card__value-main {
+  display: flex;
+  align-items: baseline;
+  gap: 0.125rem;
+}
+
+.report-card__value {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--ui-text);
+}
+
+.report-card__value-suffix {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  color: var(--ui-text-muted);
+}
+
+.report-card__trend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: var(--ui-bg-muted);
+  color: var(--ui-text-muted);
+  transition: all 0.2s ease;
+}
+
+.report-card__trend--up {
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
+}
+
+.report-card__trend--down {
+  background: var(--ui-error-soft);
+  color: var(--ui-error);
+}
+
+.report-card__progress {
+  position: relative;
+}
+
+.report-card__progress-track {
+  height: 0.5rem;
+  background: var(--ui-bg-muted);
+  overflow: hidden;
+}
+
+.report-card__progress-fill {
+  height: 100%;
+  transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--accent);
+}
+
+.report-card__progress-fill--success {
+  background: var(--ui-success);
+}
+
+.report-card__progress-fill--warning {
+  background: var(--ui-warning);
+}
+
+.report-card__progress-fill--error {
+  background: var(--ui-error);
+}
+
+.report-card__progress-markers {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 0.5rem;
+  pointer-events: none;
+}
+
+.report-card__progress-marker {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: var(--ui-border-accented);
+  transform: translateX(-50%);
+}
+
+.report-card__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--ui-bg-muted);
+  color: var(--ui-text-muted);
+}
+
+.report-card__badge--success {
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
+}
+
+.report-card__badge--warning {
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
+
+.report-card__badge--error {
+  background: var(--ui-error-soft);
+  color: var(--ui-error);
+}
+
+.report-card__stats-row {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.report-card__stat {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.report-card__stat-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ui-text-dimmed);
+}
+
+.report-card__stat-dot--success {
+  background: var(--ui-success);
+}
+
+.report-card__stat-dot--muted {
+  background: var(--ui-text-dimmed);
+}
+
+.report-card__stat-value {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ui-text);
+}
+
+.report-card__stat-label {
+  font-size: 0.75rem;
+  color: var(--ui-text-muted);
+}
+
+.report-card__mini-progress {
+  height: 4px;
+  background: var(--ui-bg-muted);
+  overflow: hidden;
+}
+
+.report-card__mini-progress-fill {
+  height: 100%;
+  background: var(--ui-success);
+  transition: width 0.5s ease;
+}
+
+.report-card__metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0.75rem;
+  background: var(--ui-bg-muted);
+  transition: background-color 0.2s ease;
+}
+
+.report-card__metric:hover {
+  background: var(--ui-bg-accent);
+}
+
+.report-card__metric-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+  opacity: 0.6;
+}
+
+.report-card__metric-icon--error {
+  color: var(--ui-error);
+}
+
+.report-card__metric-icon--warning {
+  color: var(--ui-warning);
+}
+
+.report-card__metric-value {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--ui-text);
+}
+
+.report-card__metric-label {
+  font-size: 0.6875rem;
+  color: var(--ui-text-muted);
+  margin-top: 0.25rem;
+}
+
+.report-card__file-info {
+  min-height: 3rem;
+}
+
+.report-card__action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.25rem;
+  padding: 0 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  background: var(--ui-bg-muted);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.report-card__action-btn:hover:not(:disabled) {
+  background: var(--ui-bg-accent);
+  border-color: var(--ui-border-accented);
+}
+
+.report-card__action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.report-card__action-btn--secondary {
+  height: 1.75rem;
+  padding: 0 0.625rem;
+  font-size: 0.75rem;
+}
+
+.report-card__result-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.75rem;
+  background: var(--ui-bg-muted);
+  transition: background-color 0.15s ease;
+}
+
+.report-card__result-row:hover {
+  background: var(--ui-bg-accent);
+}
+
+.report-card__result-row--success {
+  color: var(--ui-success);
+}
+
+.report-card__result-row--warning {
+  color: var(--ui-warning);
+}
+
+.report-card__result-row--error {
+  color: var(--ui-error);
+}
+
+/* Jira Card Component */
+.jira-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.jira-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--ui-border);
+  background: linear-gradient(135deg, var(--ui-info-soft) 0%, transparent 100%);
+}
+
+.jira-card__title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.jira-card__logo {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ui-info);
+  color: white;
+}
+
+.jira-card__title {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ui-text);
+  margin: 0;
+}
+
+.jira-card__subtitle {
+  font-size: 0.6875rem;
+  color: var(--ui-text-muted);
+  margin-top: 0.125rem;
+}
+
+.jira-card__refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: var(--ui-bg-muted);
+  color: var(--ui-text-muted);
+  border: 1px solid var(--ui-border);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.jira-card__refresh-btn:hover:not(:disabled) {
+  background: var(--ui-bg-accent);
+  color: var(--ui-text);
+  border-color: var(--ui-border-accented);
+}
+
+.jira-card__refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.jira-card__refresh-btn--loading svg {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.jira-card__stats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 0.875rem 1.25rem;
+  background: var(--ui-bg-muted);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.jira-card__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+.jira-card__stat-value {
+  font-family: var(--font-mono);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--ui-text);
+}
+
+.jira-card__stat-label {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ui-text-muted);
+}
+
+.jira-card__stat-divider {
+  width: 1px;
+  height: 2rem;
+  background: var(--ui-border);
+}
+
+.jira-card__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  gap: 1rem;
+}
+
+.jira-card__loading-spinner {
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ui-info-soft);
+  color: var(--ui-info);
+}
+
+.jira-card__loading-text {
+  font-size: 0.8125rem;
+  color: var(--ui-text-muted);
+}
+
+.jira-card__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.jira-card__empty-icon {
+  width: 4rem;
+  height: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ui-bg-muted);
+  color: var(--ui-text-dimmed);
+  margin-bottom: 1rem;
+}
+
+.jira-card__empty-title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--ui-text);
+  margin-bottom: 0.25rem;
+}
+
+.jira-card__empty-description {
+  font-size: 0.8125rem;
+  color: var(--ui-text-muted);
+  max-width: 20rem;
+}
+
+.jira-card__list {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+/* Individual Jira Issue */
+.jira-issue {
+  display: block;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--ui-border);
+  text-decoration: none;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.jira-issue::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--ui-info);
+  transform: scaleY(0);
+  transition: transform 0.2s ease;
+}
+
+.jira-issue:hover {
+  background: var(--ui-bg-muted);
+}
+
+.jira-issue:hover::before {
+  transform: scaleY(1);
+}
+
+.jira-issue:last-child {
+  border-bottom: none;
+}
+
+.jira-issue__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.jira-issue__key {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ui-info);
+  background: var(--ui-info-soft);
+  padding: 0.25rem 0.5rem;
+}
+
+.jira-issue__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.25rem 0.5rem;
+  background: var(--ui-bg-muted);
+  color: var(--ui-text-muted);
+}
+
+.jira-issue__status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.jira-issue__status--open {
+  background: var(--ui-info-soft);
+  color: var(--ui-info);
+}
+
+.jira-issue__status--progress {
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
+
+.jira-issue__status--done {
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
+}
+
+.jira-issue__summary {
+  font-size: 0.8125rem;
+  color: var(--ui-text);
+  line-height: 1.4;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.jira-issue__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+}
+
+.jira-issue__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  color: var(--ui-text-dimmed);
+}
+
+.jira-issue__action {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--ui-text-muted);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: all 0.2s ease;
+}
+
+.jira-issue:hover .jira-issue__action {
+  opacity: 1;
+  transform: translateX(0);
+  color: var(--ui-info);
+}
+
+.jira-issue__tags {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.jira-issue__tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.625rem;
+  font-weight: 500;
+  background: var(--ui-bg-accent);
+  color: var(--ui-text-muted);
+  border: 1px solid var(--ui-border);
+  transition: all 0.15s ease;
+}
+
+.jira-issue__tag--more {
+  background: var(--ui-bg-muted);
+  color: var(--ui-text-dimmed);
+  font-style: italic;
+}
+
+.jira-issue:hover .jira-issue__tag {
+  background: var(--ui-bg-muted);
+  border-color: var(--ui-border-accented);
+}
+
+.jira-issue__priority {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: var(--ui-bg-muted);
+  color: var(--ui-text-muted);
+}
+
+.jira-issue__priority--highest,
+.jira-issue__priority--critical {
+  background: var(--ui-error-soft);
+  color: var(--ui-error);
+}
+
+.jira-issue__priority--high {
+  background: rgba(249, 115, 22, 0.12);
+  color: #f97316;
+}
+
+.dark .jira-issue__priority--high {
+  background: rgba(251, 146, 60, 0.15);
+  color: #fb923c;
+}
+
+.jira-issue__priority--medium {
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
+
+.jira-issue__priority--low {
+  background: var(--ui-info-soft);
+  color: var(--ui-info);
+}
+
+.jira-issue__priority--lowest,
+.jira-issue__priority--trivial {
+  background: var(--ui-bg-muted);
+  color: var(--ui-text-dimmed);
+}
+
+.jira-issue__time {
+  font-size: 0.6875rem;
+  color: var(--ui-text-dimmed);
+}
+
+/* Jira Page Logo */
+.jira-page-logo {
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ui-info);
+  color: white;
+}
+
 /* Data Table Row */
 .data-row {
   padding: 1rem 1.25rem;

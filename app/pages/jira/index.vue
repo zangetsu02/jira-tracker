@@ -233,31 +233,31 @@ const hasActiveFilters = computed(() =>
     <header class="shrink-0 mb-6">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
-          <div class="w-12 h-12 bg-[var(--ui-bg-accented)] flex items-center justify-center">
-            <UIcon name="i-simple-icons-jira" class="w-6 h-6 text-[var(--ui-text)]" />
+          <div class="jira-page-logo">
+            <UIcon name="i-simple-icons-jira" class="w-6 h-6" />
           </div>
           <div>
-            <h1 class="text-2xl font-semibold">Jira Issues</h1>
+            <h1 class="text-2xl font-display tracking-tight">Jira Issues</h1>
             <p class="text-sm text-[var(--ui-text-muted)]">
-              Gestione e monitoraggio issue
+              {{ issuesData?.total || 0 }} issue totali
             </p>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <UKbd>⌘</UKbd>
-          <UKbd>K</UKbd>
-          <span class="text-xs text-[var(--ui-text-muted)] ml-1">per cercare</span>
-          <UButton
-            icon="i-lucide-refresh-cw"
-            color="neutral"
-            variant="ghost"
-            :loading="loadingIssues"
+        <div class="flex items-center gap-3">
+          <div class="hidden sm:flex items-center gap-1.5 text-xs text-[var(--ui-text-dimmed)]">
+            <UKbd size="sm">⌘</UKbd>
+            <UKbd size="sm">K</UKbd>
+            <span class="ml-1">per cercare</span>
+          </div>
+          <button
+            class="jira-card__refresh-btn"
+            :class="{ 'jira-card__refresh-btn--loading': loadingIssues }"
+            :disabled="loadingIssues"
             aria-label="Aggiorna lista issue"
-            class="ml-4"
             @click="refreshIssues()"
           >
-            Aggiorna
-          </UButton>
+            <UIcon name="i-lucide-refresh-cw" class="w-4 h-4" />
+          </button>
         </div>
       </div>
     </header>

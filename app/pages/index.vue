@@ -151,99 +151,149 @@ const toggleExclusion = async (ms: MicroserviceWithStatus, event: Event) => {
       <!-- Stats Bento Grid -->
       <div class="bento-grid">
         <!-- Coverage - Large Card -->
-        <div class="bento-item bento-item--span-4 p-6 animate-slide-up stagger-1">
-          <div class="flex items-start justify-between mb-6">
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-wider text-[var(--ui-text-muted)] mb-1">
-                Copertura Totale
-              </p>
-              <p class="text-5xl font-display">
-                {{ stats.coverage }}<span class="text-2xl text-[var(--ui-text-muted)]">%</span>
-              </p>
-            </div>
-            <div
-              class="w-12 h-12 flex items-center justify-center"
-              :class="stats.coverage >= 80 ? 'bg-[var(--ui-success-soft)]' : stats.coverage >= 50 ? 'bg-[var(--ui-warning-soft)]' : 'bg-[var(--ui-error-soft)]'"
-            >
+        <div class="bento-item bento-item--span-4 p-6 animate-slide-up stagger-1 report-card group">
+          <div class="report-card__header">
+            <div class="report-card__icon-wrapper" :class="stats.coverage >= 80 ? 'report-card__icon-wrapper--success' : stats.coverage >= 50 ? 'report-card__icon-wrapper--warning' : 'report-card__icon-wrapper--error'">
               <UIcon
                 name="i-lucide-pie-chart"
-                class="w-6 h-6"
-                :class="stats.coverage >= 80 ? 'text-[var(--ui-success)]' : stats.coverage >= 50 ? 'text-[var(--ui-warning)]' : 'text-[var(--ui-error)]'"
+                class="w-5 h-5"
+              />
+              <div class="report-card__icon-ring" />
+            </div>
+            <span class="report-card__label">Copertura Totale</span>
+          </div>
+
+          <div class="report-card__value-wrapper mt-6">
+            <div class="report-card__value-main">
+              <span class="report-card__value">{{ stats.coverage }}</span>
+              <span class="report-card__value-suffix">%</span>
+            </div>
+            <div class="report-card__trend" :class="stats.coverage >= 80 ? 'report-card__trend--up' : stats.coverage < 50 ? 'report-card__trend--down' : ''">
+              <UIcon
+                :name="stats.coverage >= 80 ? 'i-lucide-trending-up' : stats.coverage < 50 ? 'i-lucide-trending-down' : 'i-lucide-minus'"
+                class="w-4 h-4"
               />
             </div>
           </div>
-          <div class="space-y-3">
-            <div class="h-3 bg-[var(--ui-bg-muted)] overflow-hidden">
-              <div
-                class="h-full transition-all duration-700 ease-out"
-                :class="stats.coverage >= 80 ? 'bg-[var(--ui-success)]' : stats.coverage >= 50 ? 'bg-[var(--ui-warning)]' : 'bg-[var(--ui-error)]'"
-                :style="{ width: `${stats.coverage}%` }"
-              />
+
+          <div class="mt-6 space-y-3">
+            <div class="report-card__progress">
+              <div class="report-card__progress-track">
+                <div
+                  class="report-card__progress-fill"
+                  :class="stats.coverage >= 80 ? 'report-card__progress-fill--success' : stats.coverage >= 50 ? 'report-card__progress-fill--warning' : 'report-card__progress-fill--error'"
+                  :style="{ width: `${stats.coverage}%` }"
+                />
+              </div>
+              <div class="report-card__progress-markers">
+                <span class="report-card__progress-marker" style="left: 50%" />
+                <span class="report-card__progress-marker" style="left: 80%" />
+              </div>
             </div>
-            <p class="text-sm text-[var(--ui-text-muted)]">
-              <span class="font-mono font-medium text-[var(--ui-text)]">{{ stats.implementedUseCases }}</span>
-              di
-              <span class="font-mono font-medium text-[var(--ui-text)]">{{ stats.totalUseCases }}</span>
-              use case implementati
-            </p>
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-[var(--ui-text-muted)]">
+                <span class="font-mono font-semibold text-[var(--ui-text)]">{{ stats.implementedUseCases }}</span>
+                /
+                <span class="font-mono">{{ stats.totalUseCases }}</span>
+                use case
+              </span>
+              <span
+                class="report-card__badge"
+                :class="stats.coverage >= 80 ? 'report-card__badge--success' : stats.coverage >= 50 ? 'report-card__badge--warning' : 'report-card__badge--error'"
+              >
+                {{ stats.coverage >= 80 ? 'Ottimo' : stats.coverage >= 50 ? 'Discreto' : 'Critico' }}
+              </span>
+            </div>
           </div>
         </div>
 
         <!-- Microservices Count -->
-        <div class="bento-item bento-item--span-4 p-6 animate-slide-up stagger-2">
-          <div class="flex items-start justify-between mb-4">
-            <p class="text-xs font-semibold uppercase tracking-wider text-[var(--ui-text-muted)]">
-              Microservizi
-            </p>
-            <div class="w-10 h-10 bg-[var(--ui-bg-muted)] flex items-center justify-center">
+        <div class="bento-item bento-item--span-4 p-6 animate-slide-up stagger-2 report-card group">
+          <div class="report-card__header">
+            <div class="report-card__icon-wrapper report-card__icon-wrapper--primary">
               <UIcon
                 name="i-lucide-boxes"
-                class="w-5 h-5 text-[var(--ui-text-muted)]"
+                class="w-5 h-5"
               />
+              <div class="report-card__icon-ring" />
+            </div>
+            <span class="report-card__label">Microservizi</span>
+          </div>
+
+          <div class="report-card__value-wrapper mt-6">
+            <div class="report-card__value-main">
+              <span class="report-card__value">{{ stats.total }}</span>
             </div>
           </div>
-          <p class="text-5xl font-display mb-4">
-            {{ stats.total }}
-          </p>
-          <div class="flex items-center gap-4 text-sm">
-            <div class="flex items-center gap-2">
-              <span class="status-dot status-dot--success" />
-              <span class="text-[var(--ui-text-muted)]">{{ stats.analyzed }} analizzati</span>
+
+          <div class="mt-6 space-y-4">
+            <div class="report-card__stats-row">
+              <div class="report-card__stat">
+                <span class="report-card__stat-dot report-card__stat-dot--success" />
+                <span class="report-card__stat-value">{{ stats.analyzed }}</span>
+                <span class="report-card__stat-label">analizzati</span>
+              </div>
+              <div class="report-card__stat">
+                <span class="report-card__stat-dot report-card__stat-dot--muted" />
+                <span class="report-card__stat-value">{{ stats.total - stats.analyzed }}</span>
+                <span class="report-card__stat-label">in attesa</span>
+              </div>
+            </div>
+            <div class="report-card__mini-progress">
+              <div
+                class="report-card__mini-progress-fill"
+                :style="{ width: stats.total > 0 ? `${(stats.analyzed / stats.total) * 100}%` : '0%' }"
+              />
             </div>
           </div>
         </div>
 
         <!-- Issues -->
-        <div class="bento-item bento-item--span-4 p-6 animate-slide-up stagger-3">
-          <div class="flex items-start justify-between mb-4">
-            <p class="text-xs font-semibold uppercase tracking-wider text-[var(--ui-text-muted)]">
-              Stato Analisi
-            </p>
-            <div class="w-10 h-10 bg-[var(--ui-bg-muted)] flex items-center justify-center">
+        <div class="bento-item bento-item--span-4 p-6 animate-slide-up stagger-3 report-card group">
+          <div class="report-card__header">
+            <div class="report-card__icon-wrapper report-card__icon-wrapper--info">
               <UIcon
                 name="i-lucide-activity"
-                class="w-5 h-5 text-[var(--ui-text-muted)]"
+                class="w-5 h-5"
               />
+              <div class="report-card__icon-ring" />
             </div>
+            <span class="report-card__label">Stato Analisi</span>
           </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
+
+          <div class="mt-6 grid grid-cols-2 gap-4">
+            <div class="report-card__metric">
+              <div class="report-card__metric-icon report-card__metric-icon--error">
+                <UIcon name="i-lucide-alert-circle" class="w-4 h-4" />
+              </div>
               <p
-                class="text-3xl font-display"
+                class="report-card__metric-value"
                 :class="stats.withIssues > 0 ? 'text-[var(--ui-error)]' : ''"
               >
                 {{ stats.withIssues }}
               </p>
-              <p class="text-xs text-[var(--ui-text-muted)] mt-1">Con problemi</p>
+              <p class="report-card__metric-label">Con problemi</p>
             </div>
-            <div>
+            <div class="report-card__metric">
+              <div class="report-card__metric-icon report-card__metric-icon--warning">
+                <UIcon name="i-lucide-alert-triangle" class="w-4 h-4" />
+              </div>
               <p
-                class="text-3xl font-display"
+                class="report-card__metric-value"
                 :class="stats.partial > 0 ? 'text-[var(--ui-warning)]' : ''"
               >
                 {{ stats.partial }}
               </p>
-              <p class="text-xs text-[var(--ui-text-muted)] mt-1">Parziali</p>
+              <p class="report-card__metric-label">Parziali</p>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-4 border-t border-[var(--ui-border)]">
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-[var(--ui-text-muted)]">Completati senza problemi</span>
+              <span class="font-mono font-semibold text-[var(--ui-success)]">
+                {{ stats.analyzed - stats.withIssues - stats.partial }}
+              </span>
             </div>
           </div>
         </div>
