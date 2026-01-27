@@ -70,7 +70,7 @@ const handleInput = (event: Event) => {
   // Find if we're in a mention context (after @ without space)
   const textBeforeCursor = value.substring(0, cursorPos)
   const lastAtIndex = textBeforeCursor.lastIndexOf('@')
-  
+
   if (lastAtIndex !== -1) {
     const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1)
     // Check if there's no space after @ (still typing mention)
@@ -81,7 +81,7 @@ const handleInput = (event: Event) => {
       return
     }
   }
-  
+
   showMentions.value = false
   mentionQuery.value = ''
 }
@@ -130,13 +130,13 @@ const selectUser = (user: JiraUser) => {
   const value = modelValue.value
   const beforeMention = value.substring(0, mentionStartIndex.value)
   const afterMention = value.substring(mentionStartIndex.value + 1 + mentionQuery.value.length)
-  
+
   // Insert Jira mention format [~username] or [~accountId]
   const mentionText = `[~${user.accountId || user.name}]`
   modelValue.value = beforeMention + mentionText + afterMention
-  
+
   closeMentions()
-  
+
   // Focus and set cursor after mention
   nextTick(() => {
     if (textareaRef.value) {
@@ -191,7 +191,7 @@ watch(textareaRef, (el) => {
       @input="handleInput"
       @keydown="handleKeydown"
     />
-    
+
     <!-- Mention dropdown -->
     <Transition
       enter-active-class="transition duration-100 ease-out"
@@ -207,25 +207,52 @@ watch(textareaRef, (el) => {
         class="absolute z-50 bottom-full left-0 mb-1 w-72 max-h-48 overflow-y-auto bg-[var(--ui-bg-elevated)] border border-[var(--ui-border)] shadow-[var(--shadow-lg)]"
       >
         <!-- Loading -->
-        <div v-if="loadingUsers" class="p-3 text-center">
-          <UIcon name="i-lucide-loader-2" class="w-5 h-5 animate-spin text-[var(--accent)] mx-auto" />
-          <p class="text-xs text-[var(--ui-text-muted)] mt-1">Ricerca utenti...</p>
+        <div
+          v-if="loadingUsers"
+          class="p-3 text-center"
+        >
+          <UIcon
+            name="i-lucide-loader-2"
+            class="w-5 h-5 animate-spin text-[var(--accent)] mx-auto"
+          />
+          <p class="text-xs text-[var(--ui-text-muted)] mt-1">
+            Ricerca utenti...
+          </p>
         </div>
-        
+
         <!-- No results -->
-        <div v-else-if="users.length === 0 && mentionQuery.length > 0" class="p-3 text-center">
-          <UIcon name="i-lucide-user-x" class="w-5 h-5 text-[var(--ui-text-dimmed)] mx-auto" />
-          <p class="text-xs text-[var(--ui-text-muted)] mt-1">Nessun utente trovato</p>
+        <div
+          v-else-if="users.length === 0 && mentionQuery.length > 0"
+          class="p-3 text-center"
+        >
+          <UIcon
+            name="i-lucide-user-x"
+            class="w-5 h-5 text-[var(--ui-text-dimmed)] mx-auto"
+          />
+          <p class="text-xs text-[var(--ui-text-muted)] mt-1">
+            Nessun utente trovato
+          </p>
         </div>
-        
+
         <!-- Hint to type -->
-        <div v-else-if="users.length === 0" class="p-3 text-center">
-          <UIcon name="i-lucide-at-sign" class="w-5 h-5 text-[var(--ui-text-dimmed)] mx-auto" />
-          <p class="text-xs text-[var(--ui-text-muted)] mt-1">Digita per cercare utenti...</p>
+        <div
+          v-else-if="users.length === 0"
+          class="p-3 text-center"
+        >
+          <UIcon
+            name="i-lucide-at-sign"
+            class="w-5 h-5 text-[var(--ui-text-dimmed)] mx-auto"
+          />
+          <p class="text-xs text-[var(--ui-text-muted)] mt-1">
+            Digita per cercare utenti...
+          </p>
         </div>
-        
+
         <!-- User list -->
-        <div v-else class="py-1">
+        <div
+          v-else
+          class="py-1"
+        >
           <button
             v-for="(user, index) in users"
             :key="user.accountId || user.name"
@@ -244,7 +271,10 @@ watch(textareaRef, (el) => {
               <p class="text-sm font-medium text-[var(--ui-text)] truncate">
                 {{ user.displayName }}
               </p>
-              <p v-if="user.name" class="text-xs text-[var(--ui-text-muted)] truncate">
+              <p
+                v-if="user.name"
+                class="text-xs text-[var(--ui-text-muted)] truncate"
+              >
                 @{{ user.name }}
               </p>
             </div>

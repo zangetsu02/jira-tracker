@@ -19,14 +19,14 @@ const addingComment = ref(false)
 
 // Comments sorted chronologically (oldest first, newest last)
 const sortedComments = computed(() => {
-  return [...props.comments].sort((a, b) => 
+  return [...props.comments].sort((a, b) =>
     new Date(a.created).getTime() - new Date(b.created).getTime()
   )
 })
 
 const handleAddComment = async () => {
   if (!newComment.value.trim()) return
-  
+
   addingComment.value = true
   try {
     emit('add', newComment.value.trim())
@@ -47,9 +47,17 @@ defineExpose({
     <!-- Header -->
     <div class="flex items-center justify-between">
       <h3 class="text-sm font-semibold text-[var(--ui-text)] flex items-center gap-2">
-        <UIcon name="i-lucide-message-square" class="w-4 h-4 text-[var(--ui-text-muted)]" />
+        <UIcon
+          name="i-lucide-message-square"
+          class="w-4 h-4 text-[var(--ui-text-muted)]"
+        />
         Commenti
-        <UBadge v-if="comments.length" color="neutral" variant="subtle" size="xs">
+        <UBadge
+          v-if="comments.length"
+          color="neutral"
+          variant="subtle"
+          size="xs"
+        >
           {{ comments.length }}
         </UBadge>
       </h3>
@@ -65,17 +73,37 @@ defineExpose({
     </div>
 
     <!-- Comments List (chronological: oldest first) -->
-    <div v-if="loading && comments.length === 0" class="space-y-4">
-      <USkeleton v-for="i in 2" :key="i" class="h-24 w-full rounded-xl" />
+    <div
+      v-if="loading && comments.length === 0"
+      class="space-y-4"
+    >
+      <USkeleton
+        v-for="i in 2"
+        :key="i"
+        class="h-24 w-full rounded-xl"
+      />
     </div>
 
-    <div v-else-if="comments.length === 0" class="text-center py-10 bg-[var(--ui-bg-muted)]">
-      <UIcon name="i-lucide-message-square-dashed" class="w-12 h-12 text-[var(--ui-text-dimmed)] mx-auto mb-3" />
-      <p class="text-sm font-medium text-[var(--ui-text-muted)]">Nessun commento</p>
-      <p class="text-xs text-[var(--ui-text-dimmed)] mt-1">Aggiungi il primo commento qui sotto</p>
+    <div
+      v-else-if="comments.length === 0"
+      class="text-center py-10 bg-[var(--ui-bg-muted)]"
+    >
+      <UIcon
+        name="i-lucide-message-square-dashed"
+        class="w-12 h-12 text-[var(--ui-text-dimmed)] mx-auto mb-3"
+      />
+      <p class="text-sm font-medium text-[var(--ui-text-muted)]">
+        Nessun commento
+      </p>
+      <p class="text-xs text-[var(--ui-text-dimmed)] mt-1">
+        Aggiungi il primo commento qui sotto
+      </p>
     </div>
 
-    <div v-else class="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+    <div
+      v-else
+      class="space-y-4 max-h-[400px] overflow-y-auto pr-2"
+    >
       <div
         v-for="comment in sortedComments"
         :key="comment.id"
@@ -89,7 +117,7 @@ defineExpose({
             size="sm"
             class="shrink-0 mt-0.5"
           />
-          
+
           <!-- Content -->
           <div class="flex-1 min-w-0">
             <!-- Header -->
@@ -103,10 +131,13 @@ defineExpose({
                 </span>
               </UTooltip>
             </div>
-            
+
             <!-- Body with Jira formatting -->
             <div class="p-3 bg-[var(--ui-bg-muted)] border border-[var(--ui-border)]">
-              <JiraDescriptionPreview :content="comment.body" :attachments="attachments" />
+              <JiraDescriptionPreview
+                :content="comment.body"
+                :attachments="attachments"
+              />
             </div>
           </div>
         </div>
@@ -116,7 +147,10 @@ defineExpose({
     <!-- Add Comment Form -->
     <div class="pt-4 border-t border-[var(--ui-border)]">
       <div class="flex gap-3">
-        <UAvatar size="sm" class="shrink-0 mt-1" />
+        <UAvatar
+          size="sm"
+          class="shrink-0 mt-1"
+        />
         <div class="flex-1 space-y-3">
           <div class="flex items-center justify-between mb-1">
             <span class="text-xs font-medium text-[var(--ui-text-muted)]">Nuovo commento</span>

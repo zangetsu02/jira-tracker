@@ -94,10 +94,10 @@ export default defineEventHandler(async (event) => {
 
   const usecase = analysis[0].usecaseId
     ? await db
-      .select()
-      .from(usecases)
-      .where(eq(usecases.id, analysis[0].usecaseId))
-      .limit(1)
+        .select()
+        .from(usecases)
+        .where(eq(usecases.id, analysis[0].usecaseId))
+        .limit(1)
     : null
 
   const ms = await db

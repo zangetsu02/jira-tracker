@@ -75,12 +75,22 @@ watch(() => props.selectedKey, (key) => {
 <template>
   <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
     <!-- Loading Skeleton -->
-    <div v-if="loading && !issues.length" class="p-4 space-y-3 overflow-y-auto">
-      <USkeleton v-for="i in 6" :key="i" class="h-20 w-full" />
+    <div
+      v-if="loading && !issues.length"
+      class="p-4 space-y-3 overflow-y-auto"
+    >
+      <USkeleton
+        v-for="i in 6"
+        :key="i"
+        class="h-20 w-full"
+      />
     </div>
 
     <!-- Error -->
-    <div v-else-if="error" class="p-4">
+    <div
+      v-else-if="error"
+      class="p-4"
+    >
       <UAlert
         color="error"
         variant="subtle"
@@ -91,16 +101,21 @@ watch(() => props.selectedKey, (key) => {
     </div>
 
     <!-- Empty State -->
-    <div 
-      v-else-if="!issues.length" 
+    <div
+      v-else-if="!issues.length"
       class="flex flex-col items-center justify-center flex-1 p-8 text-center"
       role="status"
       aria-live="polite"
     >
       <div class="w-16 h-16 bg-[var(--ui-bg-muted)] flex items-center justify-center mb-4">
-        <UIcon name="i-lucide-inbox" class="w-8 h-8 text-[var(--ui-text-dimmed)]" />
+        <UIcon
+          name="i-lucide-inbox"
+          class="w-8 h-8 text-[var(--ui-text-dimmed)]"
+        />
       </div>
-      <p class="text-[var(--ui-text-muted)] font-medium">Nessuna issue trovata</p>
+      <p class="text-[var(--ui-text-muted)] font-medium">
+        Nessuna issue trovata
+      </p>
       <p class="text-sm text-[var(--ui-text-dimmed)] mt-1">
         {{ hasActiveFilters ? 'Prova a modificare i filtri' : 'Non ci sono issue da mostrare' }}
       </p>
@@ -143,7 +158,12 @@ watch(() => props.selectedKey, (key) => {
     </div>
 
     <!-- Screen reader announcement -->
-    <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+    <div
+      class="sr-only"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
       {{ issues.length }} issue trovate
     </div>
   </div>

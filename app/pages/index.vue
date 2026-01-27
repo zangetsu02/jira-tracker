@@ -153,7 +153,10 @@ const toggleExclusion = async (ms: MicroserviceWithStatus, event: Event) => {
         <!-- Coverage - Large Card -->
         <div class="bento-item bento-item--span-4 p-6 animate-slide-up stagger-1 report-card group">
           <div class="report-card__header">
-            <div class="report-card__icon-wrapper" :class="stats.coverage >= 80 ? 'report-card__icon-wrapper--success' : stats.coverage >= 50 ? 'report-card__icon-wrapper--warning' : 'report-card__icon-wrapper--error'">
+            <div
+              class="report-card__icon-wrapper"
+              :class="stats.coverage >= 80 ? 'report-card__icon-wrapper--success' : stats.coverage >= 50 ? 'report-card__icon-wrapper--warning' : 'report-card__icon-wrapper--error'"
+            >
               <UIcon
                 name="i-lucide-pie-chart"
                 class="w-5 h-5"
@@ -168,7 +171,10 @@ const toggleExclusion = async (ms: MicroserviceWithStatus, event: Event) => {
               <span class="report-card__value">{{ stats.coverage }}</span>
               <span class="report-card__value-suffix">%</span>
             </div>
-            <div class="report-card__trend" :class="stats.coverage >= 80 ? 'report-card__trend--up' : stats.coverage < 50 ? 'report-card__trend--down' : ''">
+            <div
+              class="report-card__trend"
+              :class="stats.coverage >= 80 ? 'report-card__trend--up' : stats.coverage < 50 ? 'report-card__trend--down' : ''"
+            >
               <UIcon
                 :name="stats.coverage >= 80 ? 'i-lucide-trending-up' : stats.coverage < 50 ? 'i-lucide-trending-down' : 'i-lucide-minus'"
                 class="w-4 h-4"
@@ -186,8 +192,14 @@ const toggleExclusion = async (ms: MicroserviceWithStatus, event: Event) => {
                 />
               </div>
               <div class="report-card__progress-markers">
-                <span class="report-card__progress-marker" style="left: 50%" />
-                <span class="report-card__progress-marker" style="left: 80%" />
+                <span
+                  class="report-card__progress-marker"
+                  style="left: 50%"
+                />
+                <span
+                  class="report-card__progress-marker"
+                  style="left: 80%"
+                />
               </div>
             </div>
             <div class="flex items-center justify-between text-xs">
@@ -264,7 +276,10 @@ const toggleExclusion = async (ms: MicroserviceWithStatus, event: Event) => {
           <div class="mt-6 grid grid-cols-2 gap-4">
             <div class="report-card__metric">
               <div class="report-card__metric-icon report-card__metric-icon--error">
-                <UIcon name="i-lucide-alert-circle" class="w-4 h-4" />
+                <UIcon
+                  name="i-lucide-alert-circle"
+                  class="w-4 h-4"
+                />
               </div>
               <p
                 class="report-card__metric-value"
@@ -272,11 +287,16 @@ const toggleExclusion = async (ms: MicroserviceWithStatus, event: Event) => {
               >
                 {{ stats.withIssues }}
               </p>
-              <p class="report-card__metric-label">Con problemi</p>
+              <p class="report-card__metric-label">
+                Con problemi
+              </p>
             </div>
             <div class="report-card__metric">
               <div class="report-card__metric-icon report-card__metric-icon--warning">
-                <UIcon name="i-lucide-alert-triangle" class="w-4 h-4" />
+                <UIcon
+                  name="i-lucide-alert-triangle"
+                  class="w-4 h-4"
+                />
               </div>
               <p
                 class="report-card__metric-value"
@@ -284,7 +304,9 @@ const toggleExclusion = async (ms: MicroserviceWithStatus, event: Event) => {
               >
                 {{ stats.partial }}
               </p>
-              <p class="report-card__metric-label">Parziali</p>
+              <p class="report-card__metric-label">
+                Parziali
+              </p>
             </div>
           </div>
 
@@ -357,11 +379,21 @@ const toggleExclusion = async (ms: MicroserviceWithStatus, event: Event) => {
         >
           <!-- Header Row -->
           <div class="grid grid-cols-12 gap-4 px-5 py-3 text-xs font-semibold uppercase tracking-wider text-[var(--ui-text-muted)] bg-[var(--ui-bg-muted)]">
-            <div class="col-span-4">Nome</div>
-            <div class="col-span-2 text-center">Documento</div>
-            <div class="col-span-3 text-center">Copertura</div>
-            <div class="col-span-2 text-center">Ultima Analisi</div>
-            <div class="col-span-1 text-center">Azioni</div>
+            <div class="col-span-4">
+              Nome
+            </div>
+            <div class="col-span-2 text-center">
+              Documento
+            </div>
+            <div class="col-span-3 text-center">
+              Copertura
+            </div>
+            <div class="col-span-2 text-center">
+              Ultima Analisi
+            </div>
+            <div class="col-span-1 text-center">
+              Azioni
+            </div>
           </div>
 
           <!-- Data Rows -->

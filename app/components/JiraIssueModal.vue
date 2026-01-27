@@ -95,7 +95,7 @@ const buildLabels = (msName: string): string[] => {
 // Compute initial form data
 const initialFormData = computed<Partial<IssueFormData>>(() => {
   if (!props.result) return {}
-  
+
   const msName = props.microserviceName
   return {
     summary: buildTitle(props.result, msName),

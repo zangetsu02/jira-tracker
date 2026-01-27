@@ -81,7 +81,7 @@ export function buildAnalysisPrompt(params: AnalysisPromptParams): string {
 
   // Handle use cases
   if (params.usecases && params.usecases.length > 0) {
-    const usecasesList = params.usecases.map(uc => {
+    const usecasesList = params.usecases.map((uc) => {
       const lines = [`### ${uc.code || 'UC'}: ${uc.title || 'Senza titolo'}`]
       if (uc.description) lines.push(`**Descrizione**: ${uc.description}`)
       if (uc.actors) lines.push(`**Attori**: ${uc.actors}`)

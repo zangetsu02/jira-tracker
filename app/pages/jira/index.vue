@@ -21,7 +21,7 @@ const sortOrder = ref<string>((route.query.order as string) || 'desc')
 // Sync state to query params
 const updateQueryParams = () => {
   const query: Record<string, string> = {}
-  
+
   if (selectedIssueKey.value) query.issue = selectedIssueKey.value
   if (searchQuery.value) query.search = searchQuery.value
   if (statusFilter.value && statusFilter.value !== 'all') query.status = statusFilter.value
@@ -31,19 +31,19 @@ const updateQueryParams = () => {
   if (issueTypeFilter.value) query.type = issueTypeFilter.value
   if (sortBy.value && sortBy.value !== 'updated') query.sort = sortBy.value
   if (sortOrder.value && sortOrder.value !== 'desc') query.order = sortOrder.value
-  
+
   router.replace({ query })
 }
 
 watch([
-  selectedIssueKey, 
-  searchQueryDebounced, 
-  statusFilter, 
-  labelFilter, 
-  assigneeFilter, 
-  priorityFilter, 
-  issueTypeFilter, 
-  sortBy, 
+  selectedIssueKey,
+  searchQueryDebounced,
+  statusFilter,
+  labelFilter,
+  assigneeFilter,
+  priorityFilter,
+  issueTypeFilter,
+  sortBy,
   sortOrder
 ], () => {
   updateQueryParams()
@@ -69,7 +69,7 @@ const { data: issuesData, pending: loadingIssues, error: issuesError, refresh: r
 const filteredIssues = computed(() => {
   if (!issuesData.value?.issues) return []
 
-  let issues = issuesData.value.issues.filter(issue => {
+  let issues = issuesData.value.issues.filter((issue) => {
     // Label filter
     if (labelFilter.value && !issue.labels.includes(labelFilter.value)) {
       return false
@@ -95,7 +95,7 @@ const filteredIssues = computed(() => {
   // Sort issues
   issues = [...issues].sort((a, b) => {
     let comparison = 0
-    
+
     switch (sortBy.value) {
       case 'updated':
         comparison = new Date(b.updated).getTime() - new Date(a.updated).getTime()
@@ -115,7 +115,7 @@ const filteredIssues = computed(() => {
       default:
         comparison = 0
     }
-    
+
     return sortOrder.value === 'asc' ? comparison : -comparison
   })
 
@@ -126,7 +126,7 @@ const filteredIssues = computed(() => {
 const availableLabels = computed(() => {
   if (!issuesData.value?.issues) return []
   const labels = new Set<string>()
-  issuesData.value.issues.forEach(issue => {
+  issuesData.value.issues.forEach((issue) => {
     issue.labels?.forEach(label => labels.add(label))
   })
   return Array.from(labels).sort()
@@ -136,7 +136,7 @@ const availableLabels = computed(() => {
 const availableAssignees = computed(() => {
   if (!issuesData.value?.issues) return []
   const assignees = new Set<string>()
-  issuesData.value.issues.forEach(issue => {
+  issuesData.value.issues.forEach((issue) => {
     const name = getAssigneeName(issue.assignee)
     if (name) assignees.add(name)
   })
@@ -147,12 +147,12 @@ const availableAssignees = computed(() => {
 const availablePriorities = computed(() => {
   if (!issuesData.value?.issues) return []
   const priorities = new Set<string>()
-  issuesData.value.issues.forEach(issue => {
+  issuesData.value.issues.forEach((issue) => {
     if (issue.priority) priorities.add(issue.priority)
   })
   // Sort by priority order
   const priorityOrder = ['Highest', 'High', 'Medium', 'Low', 'Lowest']
-  return Array.from(priorities).sort((a, b) => 
+  return Array.from(priorities).sort((a, b) =>
     priorityOrder.indexOf(a) - priorityOrder.indexOf(b)
   )
 })
@@ -161,7 +161,7 @@ const availablePriorities = computed(() => {
 const availableIssueTypes = computed(() => {
   if (!issuesData.value?.issues) return []
   const types = new Set<string>()
-  issuesData.value.issues.forEach(issue => {
+  issuesData.value.issues.forEach((issue) => {
     if (issue.issueType) types.add(issue.issueType)
   })
   return Array.from(types).sort()
@@ -176,7 +176,7 @@ const refreshDetail = async () => {
     selectedIssue.value = null
     return
   }
-  
+
   loadingDetail.value = true
   try {
     selectedIssue.value = await $fetch<JiraIssue>(`/api/jira/issue/${selectedIssueKey.value}`)
@@ -219,11 +219,11 @@ const handleRefresh = async () => {
   await refreshIssues()
 }
 
-const hasActiveFilters = computed(() => 
-  labelFilter.value || 
-  assigneeFilter.value || 
-  priorityFilter.value || 
-  issueTypeFilter.value
+const hasActiveFilters = computed(() =>
+  labelFilter.value
+  || assigneeFilter.value
+  || priorityFilter.value
+  || issueTypeFilter.value
 )
 </script>
 
@@ -234,10 +234,15 @@ const hasActiveFilters = computed(() =>
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
           <div class="jira-page-logo">
-            <UIcon name="i-simple-icons-jira" class="w-6 h-6" />
+            <UIcon
+              name="i-simple-icons-jira"
+              class="w-6 h-6"
+            />
           </div>
           <div>
-            <h1 class="text-2xl font-display tracking-tight">Jira Issues</h1>
+            <h1 class="text-2xl font-display tracking-tight">
+              Jira Issues
+            </h1>
             <p class="text-sm text-[var(--ui-text-muted)]">
               {{ issuesData?.total || 0 }} issue totali
             </p>
@@ -245,8 +250,12 @@ const hasActiveFilters = computed(() =>
         </div>
         <div class="flex items-center gap-3">
           <div class="hidden sm:flex items-center gap-1.5 text-xs text-[var(--ui-text-dimmed)]">
-            <UKbd size="sm">⌘</UKbd>
-            <UKbd size="sm">K</UKbd>
+            <UKbd size="sm">
+              ⌘
+            </UKbd>
+            <UKbd size="sm">
+              K
+            </UKbd>
             <span class="ml-1">per cercare</span>
           </div>
           <button
@@ -256,7 +265,10 @@ const hasActiveFilters = computed(() =>
             aria-label="Aggiorna lista issue"
             @click="refreshIssues()"
           >
-            <UIcon name="i-lucide-refresh-cw" class="w-4 h-4" />
+            <UIcon
+              name="i-lucide-refresh-cw"
+              class="w-4 h-4"
+            />
           </button>
         </div>
       </div>
@@ -265,7 +277,7 @@ const hasActiveFilters = computed(() =>
     <!-- Main Layout -->
     <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-6">
       <!-- Sidebar -->
-      <aside 
+      <aside
         class="flex flex-col min-h-0 overflow-hidden border border-[var(--ui-border)] bg-[var(--ui-bg)]"
         aria-label="Lista issue"
       >
@@ -302,7 +314,7 @@ const hasActiveFilters = computed(() =>
       </aside>
 
       <!-- Detail Panel -->
-      <main 
+      <main
         class="flex flex-col overflow-hidden border border-[var(--ui-border)] bg-[var(--ui-bg)]"
         aria-label="Dettaglio issue"
       >

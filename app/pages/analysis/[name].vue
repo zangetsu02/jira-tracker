@@ -426,8 +426,8 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
         <!-- Empty State -->
         <div
           v-if="filteredResults.length === 0"
-          role="tabpanel"
           :id="`results-panel-${filterStatus}`"
+          role="tabpanel"
           class="empty-state"
         >
           <UIcon
@@ -455,8 +455,8 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
         <!-- Results List -->
         <div
           v-else
-          role="tabpanel"
           :id="`results-panel-${filterStatus}`"
+          role="tabpanel"
           class="divide-y divide-[var(--ui-border)]"
         >
           <article

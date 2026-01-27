@@ -11,7 +11,7 @@ const emit = defineEmits<{
   refresh: []
 }>()
 
-const { 
+const {
   getAssigneeName,
   getAssigneeAvatar,
   getAssigneeId,
@@ -65,7 +65,7 @@ const refreshComments = async () => {
     comments.value = []
     return
   }
-  
+
   loadingComments.value = true
   try {
     const result = await $fetch<JiraCommentsResponse>(`/api/jira/issue/${props.issue.key}/comments`)
@@ -80,7 +80,7 @@ const refreshComments = async () => {
 
 const handleAddComment = async (body: string) => {
   if (!props.issue?.key) return
-  
+
   commentsRef.value?.setAddingComment(true)
   try {
     const comment = await $fetch<JiraComment>(`/api/jira/issue/${props.issue.key}/comments`, {
@@ -138,19 +138,35 @@ const handleFormSubmit = async (data: IssueFormData) => {
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Loading -->
-    <div v-if="loading" class="flex-1 flex items-center justify-center">
+    <div
+      v-if="loading"
+      class="flex-1 flex items-center justify-center"
+    >
       <div class="text-center">
-        <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin text-[var(--ui-text-muted)] mb-2" />
-        <p class="text-sm text-[var(--ui-text-muted)]">Caricamento...</p>
+        <UIcon
+          name="i-lucide-loader-2"
+          class="w-8 h-8 animate-spin text-[var(--ui-text-muted)] mb-2"
+        />
+        <p class="text-sm text-[var(--ui-text-muted)]">
+          Caricamento...
+        </p>
       </div>
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="!issue" class="flex-1 flex flex-col items-center justify-center p-8">
+    <div
+      v-else-if="!issue"
+      class="flex-1 flex flex-col items-center justify-center p-8"
+    >
       <div class="w-20 h-20 bg-[var(--ui-bg-muted)] flex items-center justify-center mb-4">
-        <UIcon name="i-lucide-file-text" class="w-10 h-10 text-[var(--ui-text-dimmed)]" />
+        <UIcon
+          name="i-lucide-file-text"
+          class="w-10 h-10 text-[var(--ui-text-dimmed)]"
+        />
       </div>
-      <p class="text-lg font-medium text-[var(--ui-text-muted)]">Seleziona una issue</p>
+      <p class="text-lg font-medium text-[var(--ui-text-muted)]">
+        Seleziona una issue
+      </p>
       <p class="text-sm text-[var(--ui-text-dimmed)] mt-1">
         Clicca su una issue dalla lista per vedere i dettagli
       </p>
@@ -163,17 +179,26 @@ const handleFormSubmit = async (data: IssueFormData) => {
         <!-- Top Bar -->
         <div class="px-6 py-3 flex items-center justify-between bg-[var(--ui-bg-muted)]">
           <div class="flex items-center gap-3">
-            <UBadge :color="getStatusColor(issue.status)" variant="solid" size="sm">
+            <UBadge
+              :color="getStatusColor(issue.status)"
+              variant="solid"
+              size="sm"
+            >
               {{ issue.status }}
             </UBadge>
             <code class="px-2 py-0.5 text-xs font-mono bg-[var(--ui-bg-accent)] text-[var(--ui-text)]">
               {{ issue.key }}
             </code>
-            <UBadge v-if="issue.issueType" color="neutral" variant="subtle" size="xs">
+            <UBadge
+              v-if="issue.issueType"
+              color="neutral"
+              variant="subtle"
+              size="xs"
+            >
               {{ issue.issueType }}
             </UBadge>
           </div>
-          
+
           <!-- Actions -->
           <div class="flex items-center gap-2">
             <UButton
@@ -186,7 +211,10 @@ const handleFormSubmit = async (data: IssueFormData) => {
             >
               Modifica Issue
             </UButton>
-            <UTooltip v-if="!isEditing" text="Apri in Jira">
+            <UTooltip
+              v-if="!isEditing"
+              text="Apri in Jira"
+            >
               <UButton
                 :to="issue.url"
                 target="_blank"
@@ -200,7 +228,10 @@ const handleFormSubmit = async (data: IssueFormData) => {
         </div>
 
         <!-- Title (view mode only) -->
-        <div v-if="!isEditing" class="px-6 py-4">
+        <div
+          v-if="!isEditing"
+          class="px-6 py-4"
+        >
           <h2 class="text-xl font-semibold leading-tight text-[var(--ui-text)]">
             {{ issue.summary }}
           </h2>
@@ -211,7 +242,10 @@ const handleFormSubmit = async (data: IssueFormData) => {
       <div class="flex-1 min-h-0 overflow-y-auto">
         <div class="p-6">
           <!-- Edit Mode: Full Form -->
-          <div v-if="isEditing" class="space-y-4">
+          <div
+            v-if="isEditing"
+            class="space-y-4"
+          >
             <!-- Error Alert -->
             <UAlert
               v-if="saveError"
@@ -221,8 +255,12 @@ const handleFormSubmit = async (data: IssueFormData) => {
               :close-button="{ icon: 'i-lucide-x', color: 'error', variant: 'ghost', size: 'xs' }"
               @close="saveError = null"
             >
-              <template #title>Errore nel salvataggio</template>
-              <template #description>{{ saveError }}</template>
+              <template #title>
+                Errore nel salvataggio
+              </template>
+              <template #description>
+                {{ saveError }}
+              </template>
             </UAlert>
 
             <JiraIssueForm
@@ -237,19 +275,35 @@ const handleFormSubmit = async (data: IssueFormData) => {
           </div>
 
           <!-- View Mode -->
-          <div v-else class="space-y-6">
+          <div
+            v-else
+            class="space-y-6"
+          >
             <!-- Metadata Grid -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <!-- Priority -->
-              <JiraIssueMetadataCard icon="i-lucide-signal" label="Priorità">
-                <UBadge :color="getPriorityColor(issue.priority)" variant="subtle" size="sm">
-                  <UIcon :name="getPriorityIcon(issue.priority)" class="w-3.5 h-3.5 mr-1" />
+              <JiraIssueMetadataCard
+                icon="i-lucide-signal"
+                label="Priorità"
+              >
+                <UBadge
+                  :color="getPriorityColor(issue.priority)"
+                  variant="subtle"
+                  size="sm"
+                >
+                  <UIcon
+                    :name="getPriorityIcon(issue.priority)"
+                    class="w-3.5 h-3.5 mr-1"
+                  />
                   {{ issue.priority || 'Nessuna' }}
                 </UBadge>
               </JiraIssueMetadataCard>
 
               <!-- Assignee -->
-              <JiraIssueMetadataCard icon="i-lucide-user-check" label="Assegnatario">
+              <JiraIssueMetadataCard
+                icon="i-lucide-user-check"
+                label="Assegnatario"
+              >
                 <div class="flex items-center gap-2">
                   <UAvatar
                     :src="getAssigneeAvatar(issue.assignee)"
@@ -263,7 +317,10 @@ const handleFormSubmit = async (data: IssueFormData) => {
               </JiraIssueMetadataCard>
 
               <!-- Reporter -->
-              <JiraIssueMetadataCard icon="i-lucide-user" label="Reporter">
+              <JiraIssueMetadataCard
+                icon="i-lucide-user"
+                label="Reporter"
+              >
                 <div class="flex items-center gap-2">
                   <UAvatar
                     :src="getReporterAvatar(issue.reporter)"
@@ -277,7 +334,10 @@ const handleFormSubmit = async (data: IssueFormData) => {
               </JiraIssueMetadataCard>
 
               <!-- Updated -->
-              <JiraIssueMetadataCard icon="i-lucide-clock" label="Aggiornato">
+              <JiraIssueMetadataCard
+                icon="i-lucide-clock"
+                label="Aggiornato"
+              >
                 <UTooltip :text="formatDate(issue.updated)">
                   <span class="text-sm font-medium">
                     {{ formatRelativeDate(issue.updated) }}
@@ -289,7 +349,10 @@ const handleFormSubmit = async (data: IssueFormData) => {
             <!-- Labels -->
             <div class="space-y-3">
               <h3 class="text-sm font-semibold text-[var(--ui-text)] flex items-center gap-2">
-                <UIcon name="i-lucide-tags" class="w-4 h-4 text-[var(--ui-text-muted)]" />
+                <UIcon
+                  name="i-lucide-tags"
+                  class="w-4 h-4 text-[var(--ui-text-muted)]"
+                />
                 Labels
               </h3>
               <div class="flex flex-wrap gap-2">
@@ -302,7 +365,10 @@ const handleFormSubmit = async (data: IssueFormData) => {
                 >
                   {{ label }}
                 </UBadge>
-                <span v-if="!issue.labels?.length" class="text-sm text-[var(--ui-text-dimmed)] italic">
+                <span
+                  v-if="!issue.labels?.length"
+                  class="text-sm text-[var(--ui-text-dimmed)] italic"
+                >
                   Nessuna label
                 </span>
               </div>
@@ -311,15 +377,19 @@ const handleFormSubmit = async (data: IssueFormData) => {
             <!-- Description -->
             <div class="space-y-3">
               <h3 class="text-sm font-semibold text-[var(--ui-text)] flex items-center gap-2">
-                <UIcon name="i-lucide-align-left" class="w-4 h-4 text-[var(--ui-text-muted)]" />
+                <UIcon
+                  name="i-lucide-align-left"
+                  class="w-4 h-4 text-[var(--ui-text-muted)]"
+                />
                 Descrizione
               </h3>
               <div class="p-4 bg-[var(--ui-bg-muted)] border border-[var(--ui-border)]">
-                <JiraDescriptionPreview :content="issue.description" :attachments="attachments" />
+                <JiraDescriptionPreview
+                  :content="issue.description"
+                  :attachments="attachments"
+                />
               </div>
             </div>
-
-            
 
             <!-- Comments -->
             <JiraIssueComments
@@ -334,7 +404,10 @@ const handleFormSubmit = async (data: IssueFormData) => {
             <!-- Footer -->
             <div class="flex items-center justify-between text-xs text-[var(--ui-text-muted)] pt-4 border-t border-[var(--ui-border)]">
               <div class="flex items-center gap-1.5">
-                <UIcon name="i-lucide-calendar-plus" class="w-3.5 h-3.5" />
+                <UIcon
+                  name="i-lucide-calendar-plus"
+                  class="w-3.5 h-3.5"
+                />
                 Creato: {{ formatDate(issue.created) }}
               </div>
               <UButton

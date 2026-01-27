@@ -116,8 +116,8 @@ export function useAnalysisChat() {
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Errore durante la chat'
       // Remove empty assistant message on error
-      if (messages.value[messages.value.length - 1]?.role === 'assistant' &&
-        !messages.value[messages.value.length - 1]?.content) {
+      if (messages.value[messages.value.length - 1]?.role === 'assistant'
+        && !messages.value[messages.value.length - 1]?.content) {
         messages.value.pop()
       }
     } finally {

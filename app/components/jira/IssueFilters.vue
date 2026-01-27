@@ -36,11 +36,11 @@ const sortOptions = [
   { label: 'Chiave', value: 'key', icon: 'i-lucide-hash' }
 ]
 
-const hasActiveFilters = computed(() => 
-  labelFilter.value || 
-  assigneeFilter.value || 
-  priorityFilter.value || 
-  issueTypeFilter.value
+const hasActiveFilters = computed(() =>
+  labelFilter.value
+  || assigneeFilter.value
+  || priorityFilter.value
+  || issueTypeFilter.value
 )
 
 const activeFiltersCount = computed(() => {
@@ -81,7 +81,7 @@ const getPriorityIcon = (priority: string): string => {
 </script>
 
 <template>
-  <div 
+  <div
     class="shrink-0 border-b border-[var(--ui-border)]"
     role="search"
     aria-label="Filtri issue"
@@ -97,12 +97,15 @@ const getPriorityIcon = (priority: string): string => {
           size="lg"
           :loading="loading"
           aria-label="Cerca issue"
-          :ui="{ 
+          :ui="{
             base: 'w-full',
             icon: { leading: { wrapper: 'text-[var(--ui-text-muted)]' } }
           }"
         >
-          <template v-if="searchQuery" #trailing>
+          <template
+            v-if="searchQuery"
+            #trailing
+          >
             <UButton
               color="neutral"
               variant="ghost"
@@ -131,9 +134,9 @@ const getPriorityIcon = (priority: string): string => {
           @click="$emit('clearFilters')"
         >
           Rimuovi filtri
-          <UBadge 
-            color="neutral" 
-            variant="solid" 
+          <UBadge
+            color="neutral"
+            variant="solid"
             size="xs"
             class="ml-1"
           >
@@ -158,7 +161,10 @@ const getPriorityIcon = (priority: string): string => {
     </div>
 
     <!-- Collapsible Advanced Filters -->
-    <UCollapsible v-model:open="filtersExpanded" class="flex flex-col">
+    <UCollapsible
+      v-model:open="filtersExpanded"
+      class="flex flex-col"
+    >
       <!-- Trigger button - this is the default slot -->
       <div class="px-4 pb-2">
         <UButton
@@ -169,21 +175,27 @@ const getPriorityIcon = (priority: string): string => {
           :trailing-icon="filtersExpanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
         >
           <span class="flex items-center gap-2">
-            <UIcon name="i-lucide-sliders-horizontal" class="w-4 h-4" />
+            <UIcon
+              name="i-lucide-sliders-horizontal"
+              class="w-4 h-4"
+            />
             Filtri avanzati
           </span>
         </UButton>
       </div>
 
       <template #content>
-        <div 
+        <div
           id="advanced-filters"
           class="px-4 pb-4 space-y-4"
         >
           <!-- Filter Grid -->
           <div class="grid grid-cols-2 gap-3">
             <!-- Priority Filter -->
-            <UFormField label="Priorità" class="space-y-1.5">
+            <UFormField
+              label="Priorità"
+              class="space-y-1.5"
+            >
               <USelectMenu
                 v-model="priorityFilter"
                 :items="priorityItems"
@@ -194,7 +206,10 @@ const getPriorityIcon = (priority: string): string => {
                 :ui="{ base: 'w-full' }"
               >
                 <template #leading>
-                  <UIcon name="i-lucide-signal" class="w-4 h-4 text-[var(--ui-text-muted)]" />
+                  <UIcon
+                    name="i-lucide-signal"
+                    class="w-4 h-4 text-[var(--ui-text-muted)]"
+                  />
                 </template>
                 <template #empty>
                   <span class="text-[var(--ui-text-muted)] text-sm">Nessuna priorità</span>
@@ -203,7 +218,10 @@ const getPriorityIcon = (priority: string): string => {
             </UFormField>
 
             <!-- Issue Type Filter -->
-            <UFormField label="Tipo" class="space-y-1.5">
+            <UFormField
+              label="Tipo"
+              class="space-y-1.5"
+            >
               <USelectMenu
                 v-model="issueTypeFilter"
                 :items="issueTypes"
@@ -213,7 +231,10 @@ const getPriorityIcon = (priority: string): string => {
                 :ui="{ base: 'w-full' }"
               >
                 <template #leading>
-                  <UIcon name="i-lucide-layout-list" class="w-4 h-4 text-[var(--ui-text-muted)]" />
+                  <UIcon
+                    name="i-lucide-layout-list"
+                    class="w-4 h-4 text-[var(--ui-text-muted)]"
+                  />
                 </template>
                 <template #empty>
                   <span class="text-[var(--ui-text-muted)] text-sm">Nessun tipo</span>
@@ -222,7 +243,10 @@ const getPriorityIcon = (priority: string): string => {
             </UFormField>
 
             <!-- Label Filter -->
-            <UFormField label="Label" class="space-y-1.5">
+            <UFormField
+              label="Label"
+              class="space-y-1.5"
+            >
               <USelectMenu
                 v-model="labelFilter"
                 :items="labels"
@@ -234,7 +258,10 @@ const getPriorityIcon = (priority: string): string => {
                 :ui="{ base: 'w-full' }"
               >
                 <template #leading>
-                  <UIcon name="i-lucide-tag" class="w-4 h-4 text-[var(--ui-text-muted)]" />
+                  <UIcon
+                    name="i-lucide-tag"
+                    class="w-4 h-4 text-[var(--ui-text-muted)]"
+                  />
                 </template>
                 <template #empty>
                   <span class="text-[var(--ui-text-muted)] text-sm">Nessuna label</span>
@@ -243,7 +270,10 @@ const getPriorityIcon = (priority: string): string => {
             </UFormField>
 
             <!-- Assignee Filter -->
-            <UFormField label="Assegnatario" class="space-y-1.5">
+            <UFormField
+              label="Assegnatario"
+              class="space-y-1.5"
+            >
               <USelectMenu
                 v-model="assigneeFilter"
                 :items="assignees"
@@ -255,7 +285,10 @@ const getPriorityIcon = (priority: string): string => {
                 :ui="{ base: 'w-full' }"
               >
                 <template #leading>
-                  <UIcon name="i-lucide-user" class="w-4 h-4 text-[var(--ui-text-muted)]" />
+                  <UIcon
+                    name="i-lucide-user"
+                    class="w-4 h-4 text-[var(--ui-text-muted)]"
+                  />
                 </template>
                 <template #empty>
                   <span class="text-[var(--ui-text-muted)] text-sm">Nessun assegnatario</span>
@@ -266,7 +299,10 @@ const getPriorityIcon = (priority: string): string => {
 
           <!-- Sort Options -->
           <div class="pt-2 border-t border-[var(--ui-border)]">
-            <UFormField label="Ordina per" class="space-y-1.5">
+            <UFormField
+              label="Ordina per"
+              class="space-y-1.5"
+            >
               <div class="flex gap-2">
                 <USelectMenu
                   v-model="sortBy"
@@ -277,7 +313,10 @@ const getPriorityIcon = (priority: string): string => {
                   class="flex-1"
                 >
                   <template #leading>
-                    <UIcon name="i-lucide-arrow-up-down" class="w-4 h-4 text-[var(--ui-text-muted)]" />
+                    <UIcon
+                      name="i-lucide-arrow-up-down"
+                      class="w-4 h-4 text-[var(--ui-text-muted)]"
+                    />
                   </template>
                 </USelectMenu>
                 <UTooltip :text="sortOrder === 'asc' ? 'Ordine crescente' : 'Ordine decrescente'">
@@ -295,14 +334,20 @@ const getPriorityIcon = (priority: string): string => {
           </div>
 
           <!-- Active Filters Pills -->
-          <div v-if="hasActiveFilters" class="flex flex-wrap gap-2 pt-2">
-            <UBadge 
-              v-if="priorityFilter" 
-              color="neutral" 
-              variant="subtle" 
+          <div
+            v-if="hasActiveFilters"
+            class="flex flex-wrap gap-2 pt-2"
+          >
+            <UBadge
+              v-if="priorityFilter"
+              color="neutral"
+              variant="subtle"
               class="gap-1 pr-1"
             >
-              <UIcon :name="getPriorityIcon(priorityFilter)" class="w-3 h-3" />
+              <UIcon
+                :name="getPriorityIcon(priorityFilter)"
+                class="w-3 h-3"
+              />
               {{ priorityFilter }}
               <UButton
                 color="neutral"
@@ -314,13 +359,16 @@ const getPriorityIcon = (priority: string): string => {
                 @click="priorityFilter = ''"
               />
             </UBadge>
-            <UBadge 
-              v-if="issueTypeFilter" 
-              color="neutral" 
-              variant="subtle" 
+            <UBadge
+              v-if="issueTypeFilter"
+              color="neutral"
+              variant="subtle"
               class="gap-1 pr-1"
             >
-              <UIcon name="i-lucide-layout-list" class="w-3 h-3" />
+              <UIcon
+                name="i-lucide-layout-list"
+                class="w-3 h-3"
+              />
               {{ issueTypeFilter }}
               <UButton
                 color="neutral"
@@ -332,13 +380,16 @@ const getPriorityIcon = (priority: string): string => {
                 @click="issueTypeFilter = ''"
               />
             </UBadge>
-            <UBadge 
-              v-if="labelFilter" 
-              color="neutral" 
-              variant="subtle" 
+            <UBadge
+              v-if="labelFilter"
+              color="neutral"
+              variant="subtle"
               class="gap-1 pr-1"
             >
-              <UIcon name="i-lucide-tag" class="w-3 h-3" />
+              <UIcon
+                name="i-lucide-tag"
+                class="w-3 h-3"
+              />
               {{ labelFilter }}
               <UButton
                 color="neutral"
@@ -350,13 +401,16 @@ const getPriorityIcon = (priority: string): string => {
                 @click="labelFilter = ''"
               />
             </UBadge>
-            <UBadge 
-              v-if="assigneeFilter" 
-              color="neutral" 
-              variant="subtle" 
+            <UBadge
+              v-if="assigneeFilter"
+              color="neutral"
+              variant="subtle"
               class="gap-1 pr-1"
             >
-              <UIcon name="i-lucide-user" class="w-3 h-3" />
+              <UIcon
+                name="i-lucide-user"
+                class="w-3 h-3"
+              />
               {{ assigneeFilter }}
               <UButton
                 color="neutral"

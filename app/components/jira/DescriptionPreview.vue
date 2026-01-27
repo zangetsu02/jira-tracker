@@ -38,7 +38,7 @@ const handleClick = (event: MouseEvent) => {
     // Get the full-size URL (content) instead of thumbnail
     const filename = img.alt
     const attachment = attachmentsMap.value?.get(filename)
-    
+
     lightboxSrc.value = attachment?.content || img.src
     lightboxAlt.value = filename || 'Image'
     lightboxOpen.value = true
@@ -47,13 +47,16 @@ const handleClick = (event: MouseEvent) => {
 </script>
 
 <template>
-  <div 
+  <div
     v-if="content"
     class="jira-preview"
-    v-html="previewHtml"
     @click="handleClick"
+    v-html="previewHtml"
   />
-  <p v-else class="empty-text">
+  <p
+    v-else
+    class="empty-text"
+  >
     Nessuna descrizione
   </p>
 

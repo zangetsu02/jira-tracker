@@ -11,14 +11,14 @@ defineEmits<{
   select: [key: string]
 }>()
 
-const { 
-  getAssigneeName, 
+const {
+  getAssigneeName,
   getAssigneeAvatar,
   getStatusDotClass,
   getStatusColor,
-  getPriorityColor, 
+  getPriorityColor,
   getPriorityIcon,
-  formatRelativeDate 
+  formatRelativeDate
 } = useJiraHelpers()
 
 const isStatusOpen = computed(() => {
@@ -65,20 +65,29 @@ const isStatusDone = computed(() => {
     </div>
 
     <!-- Summary -->
-    <p class="jira-issue-item__summary" :title="issue.summary">
+    <p
+      class="jira-issue-item__summary"
+      :title="issue.summary"
+    >
       {{ issue.summary }}
     </p>
 
     <!-- Labels -->
-    <div v-if="issue.labels?.length" class="jira-issue-item__tags">
-      <span 
-        v-for="label in issue.labels.slice(0, 3)" 
+    <div
+      v-if="issue.labels?.length"
+      class="jira-issue-item__tags"
+    >
+      <span
+        v-for="label in issue.labels.slice(0, 3)"
         :key="label"
         class="jira-issue-item__tag"
       >
         {{ label }}
       </span>
-      <span v-if="issue.labels.length > 3" class="jira-issue-item__tag jira-issue-item__tag--more">
+      <span
+        v-if="issue.labels.length > 3"
+        class="jira-issue-item__tag jira-issue-item__tag--more"
+      >
         +{{ issue.labels.length - 3 }}
       </span>
     </div>
@@ -87,17 +96,20 @@ const isStatusDone = computed(() => {
     <div class="jira-issue-item__footer">
       <div class="jira-issue-item__meta">
         <!-- Priority -->
-        <span 
-          v-if="issue.priority" 
+        <span
+          v-if="issue.priority"
           class="jira-issue-item__priority-badge"
           :class="`jira-issue-item__priority-badge--${issue.priority?.toLowerCase()}`"
         >
-          <UIcon :name="getPriorityIcon(issue.priority)" class="w-3 h-3" />
+          <UIcon
+            :name="getPriorityIcon(issue.priority)"
+            class="w-3 h-3"
+          />
           <span>{{ issue.priority }}</span>
         </span>
         <!-- Assignee -->
-        <span 
-          v-if="getAssigneeName(issue.assignee)" 
+        <span
+          v-if="getAssigneeName(issue.assignee)"
           class="jira-issue-item__assignee"
         >
           <UAvatar
@@ -110,7 +122,10 @@ const isStatusDone = computed(() => {
       </div>
       <!-- Updated -->
       <span class="jira-issue-item__time">
-        <UIcon name="i-lucide-clock" class="w-3 h-3" />
+        <UIcon
+          name="i-lucide-clock"
+          class="w-3 h-3"
+        />
         <time :datetime="issue.updated">{{ formatRelativeDate(issue.updated) }}</time>
       </span>
     </div>
