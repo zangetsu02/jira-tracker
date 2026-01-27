@@ -208,6 +208,7 @@ const selectIssue = (key: string) => {
 }
 
 const clearFilters = () => {
+  statusFilter.value = 'all'
   labelFilter.value = ''
   assigneeFilter.value = ''
   priorityFilter.value = ''
@@ -220,7 +221,8 @@ const handleRefresh = async () => {
 }
 
 const hasActiveFilters = computed(() =>
-  labelFilter.value
+  (statusFilter.value && statusFilter.value !== 'all')
+  || labelFilter.value
   || assigneeFilter.value
   || priorityFilter.value
   || issueTypeFilter.value
@@ -229,50 +231,26 @@ const hasActiveFilters = computed(() =>
 
 <template>
   <div class="flex-1 min-h-0 flex flex-col">
-    <!-- Header -->
-    <header class="shrink-0 mb-6">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <div class="jira-page-logo">
-            <UIcon
-              name="i-simple-icons-jira"
-              class="w-6 h-6"
-            />
-          </div>
-          <div>
-            <h1 class="text-2xl font-display tracking-tight">
-              Jira Issues
-            </h1>
-            <p class="text-sm text-[var(--ui-text-muted)]">
-              {{ issuesData?.total || 0 }} issue totali
-            </p>
-          </div>
-        </div>
-        <div class="flex items-center gap-3">
-          <div class="hidden sm:flex items-center gap-1.5 text-xs text-[var(--ui-text-dimmed)]">
-            <UKbd size="sm">
-              ⌘
-            </UKbd>
-            <UKbd size="sm">
-              K
-            </UKbd>
-            <span class="ml-1">per cercare</span>
-          </div>
-          <button
-            class="jira-card__refresh-btn"
-            :class="{ 'jira-card__refresh-btn--loading': loadingIssues }"
-            :disabled="loadingIssues"
-            aria-label="Aggiorna lista issue"
-            @click="refreshIssues()"
-          >
-            <UIcon
-              name="i-lucide-refresh-cw"
-              class="w-4 h-4"
-            />
-          </button>
-        </div>
-      </div>
-    </header>
+    <!-- Filters -->
+    <JiraIssueFilters
+      v-model:search="searchQuery"
+      v-model:status="statusFilter"
+      v-model:label="labelFilter"
+      v-model:assignee="assigneeFilter"
+      v-model:priority="priorityFilter"
+      v-model:issue-type="issueTypeFilter"
+      v-model:sort-by="sortBy"
+      v-model:sort-order="sortOrder"
+      :labels="availableLabels"
+      :assignees="availableAssignees"
+      :priorities="availablePriorities"
+      :issue-types="availableIssueTypes"
+      :total-count="issuesData?.total || 0"
+      :filtered-count="filteredIssues.length"
+      :loading="loadingIssues"
+      class="shrink-0 mb-6"
+      @clear-filters="clearFilters"
+    />
 
     <!-- Main Layout -->
     <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-6">
@@ -281,26 +259,6 @@ const hasActiveFilters = computed(() =>
         class="flex flex-col min-h-0 overflow-hidden border border-[var(--ui-border)] bg-[var(--ui-bg)]"
         aria-label="Lista issue"
       >
-        <!-- Filters -->
-        <JiraIssueFilters
-          v-model:search="searchQuery"
-          v-model:status="statusFilter"
-          v-model:label="labelFilter"
-          v-model:assignee="assigneeFilter"
-          v-model:priority="priorityFilter"
-          v-model:issue-type="issueTypeFilter"
-          v-model:sort-by="sortBy"
-          v-model:sort-order="sortOrder"
-          :labels="availableLabels"
-          :assignees="availableAssignees"
-          :priorities="availablePriorities"
-          :issue-types="availableIssueTypes"
-          :total-count="issuesData?.total || 0"
-          :filtered-count="filteredIssues.length"
-          :loading="loadingIssues"
-          @clear-filters="clearFilters"
-        />
-
         <!-- Issues List -->
         <JiraIssueList
           :issues="filteredIssues"

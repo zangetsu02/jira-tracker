@@ -22,18 +22,18 @@ defineEmits<{
   clearFilters: []
 }>()
 
-const statusTabs = [
-  { value: 'all', label: 'Tutte', icon: 'i-lucide-layers' },
-  { value: 'open', label: 'Aperte', icon: 'i-lucide-circle-dot' },
-  { value: 'in_progress', label: 'In Corso', icon: 'i-lucide-loader' },
-  { value: 'done', label: 'Chiuse', icon: 'i-lucide-check-circle' }
+const statusOptions = [
+  { label: 'Tutte', value: 'all' },
+  { label: 'Aperte', value: 'open' },
+  { label: 'In Corso', value: 'in_progress' },
+  { label: 'Chiuse', value: 'done' }
 ]
 
 const sortOptions = [
-  { label: 'Ultima modifica', value: 'updated', icon: 'i-lucide-clock' },
-  { label: 'Data creazione', value: 'created', icon: 'i-lucide-calendar-plus' },
-  { label: 'Priorità', value: 'priority', icon: 'i-lucide-signal' },
-  { label: 'Chiave', value: 'key', icon: 'i-lucide-hash' }
+  { label: 'Ultima modifica', value: 'updated' },
+  { label: 'Data creazione', value: 'created' },
+  { label: 'Priorità', value: 'priority' },
+  { label: 'Chiave', value: 'key' }
 ]
 
 const hasActiveFilters = computed(() =>
@@ -41,6 +41,7 @@ const hasActiveFilters = computed(() =>
   || assigneeFilter.value
   || priorityFilter.value
   || issueTypeFilter.value
+  || (statusFilter.value && statusFilter.value !== 'all')
 )
 
 const activeFiltersCount = computed(() => {
@@ -49,11 +50,9 @@ const activeFiltersCount = computed(() => {
   if (assigneeFilter.value) count++
   if (priorityFilter.value) count++
   if (issueTypeFilter.value) count++
+  if (statusFilter.value && statusFilter.value !== 'all') count++
   return count
 })
-
-// Expanded state for collapsible filters
-const filtersExpanded = ref(true)
 
 // Toggle sort order
 const toggleSortOrder = () => {
@@ -78,353 +77,318 @@ const getPriorityIcon = (priority: string): string => {
   if (p === 'lowest' || p === 'minima') return 'i-lucide-chevrons-down'
   return 'i-lucide-minus'
 }
+
+// Get display label for status
+const getStatusLabel = (value: string) => {
+  return statusOptions.find(o => o.value === value)?.label || 'Tutte'
+}
+
+// Get display label for sort
+const getSortLabel = (value: string) => {
+  return sortOptions.find(o => o.value === value)?.label || 'Ultima modifica'
+}
 </script>
 
 <template>
   <div
-    class="shrink-0 border-b border-[var(--ui-border)]"
+    class="shrink-0 border border-[var(--ui-border)] bg-[var(--ui-bg)] rounded-lg"
     role="search"
     aria-label="Filtri issue"
   >
-    <!-- Search Header -->
-    <div class="p-4 space-y-4">
+    <!-- Single Row: Search + Filters + Sort -->
+    <div class="p-3 flex flex-wrap items-center gap-2">
       <!-- Search Input -->
-      <div class="relative">
-        <UInput
-          v-model="searchQuery"
-          placeholder="Cerca per chiave, titolo..."
-          icon="i-lucide-search"
-          size="lg"
-          :loading="loading"
-          aria-label="Cerca issue"
-          :ui="{
-            base: 'w-full',
-            icon: { leading: { wrapper: 'text-[var(--ui-text-muted)]' } }
-          }"
+      <UInput
+        v-model="searchQuery"
+        placeholder="Cerca..."
+        icon="i-lucide-search"
+        size="sm"
+        :loading="loading"
+        aria-label="Cerca issue"
+        class="w-48"
+      >
+        <template
+          v-if="searchQuery"
+          #trailing
         >
-          <template
-            v-if="searchQuery"
-            #trailing
-          >
-            <UButton
-              color="neutral"
-              variant="ghost"
-              size="xs"
-              icon="i-lucide-x"
-              aria-label="Cancella ricerca"
-              @click="searchQuery = ''"
-            />
-          </template>
-        </UInput>
-      </div>
-
-      <!-- Results Count -->
-      <div class="flex items-center justify-between text-sm">
-        <span class="text-[var(--ui-text-muted)]">
-          <span class="font-semibold text-[var(--ui-text)]">{{ filteredCount }}</span>
-          di {{ totalCount }} issue
-        </span>
-        <UButton
-          v-if="hasActiveFilters"
-          size="xs"
-          color="neutral"
-          variant="ghost"
-          icon="i-lucide-filter-x"
-          aria-label="Rimuovi tutti i filtri"
-          @click="$emit('clearFilters')"
-        >
-          Rimuovi filtri
-          <UBadge
+          <UButton
             color="neutral"
-            variant="solid"
+            variant="ghost"
             size="xs"
-            class="ml-1"
-          >
-            {{ activeFiltersCount }}
-          </UBadge>
-        </UButton>
-      </div>
+            icon="i-lucide-x"
+            aria-label="Cancella ricerca"
+            @click="searchQuery = ''"
+          />
+        </template>
+      </UInput>
 
-      <!-- Status Tabs -->
-      <UTabs
-        :items="statusTabs"
-        :model-value="statusFilter"
-        color="neutral"
-        variant="pill"
-        :ui="{
-          list: 'gap-1',
-          trigger: 'px-3 py-1.5 text-sm'
-        }"
-        aria-label="Filtra per stato"
-        @update:model-value="statusFilter = $event as string"
-      />
-    </div>
+      <!-- Divider -->
+      <div class="h-5 w-px bg-[var(--ui-border)]" />
 
-    <!-- Collapsible Advanced Filters -->
-    <UCollapsible
-      v-model:open="filtersExpanded"
-      class="flex flex-col"
-    >
-      <!-- Trigger button - this is the default slot -->
-      <div class="px-4 pb-2">
+      <!-- Status Filter -->
+      <UDropdownMenu :items="statusOptions.map(o => ({ label: o.label, click: () => statusFilter = o.value }))">
         <UButton
           color="neutral"
           variant="ghost"
           size="sm"
-          class="w-full justify-between"
-          :trailing-icon="filtersExpanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+          trailing-icon="i-lucide-chevron-down"
+          :class="{ 'bg-[var(--ui-bg-elevated)] ring-1 ring-[var(--ui-border-accented)]': statusFilter !== 'all' }"
         >
-          <span class="flex items-center gap-2">
+          Stato: {{ getStatusLabel(statusFilter) }}
+        </UButton>
+      </UDropdownMenu>
+
+      <!-- Priority Filter -->
+      <UDropdownMenu
+        v-if="priorities.length"
+        :items="[
+          { label: 'Tutte', click: () => priorityFilter = '' },
+          ...priorityItems.map(p => ({ label: p.label, icon: p.icon, click: () => priorityFilter = p.value }))
+        ]"
+      >
+        <UButton
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          trailing-icon="i-lucide-chevron-down"
+          :class="{ 'bg-[var(--ui-bg-elevated)] ring-1 ring-[var(--ui-border-accented)]': priorityFilter }"
+        >
+          <template v-if="priorityFilter">
             <UIcon
-              name="i-lucide-sliders-horizontal"
+              :name="getPriorityIcon(priorityFilter)"
               class="w-4 h-4"
             />
-            Filtri avanzati
-          </span>
+            {{ priorityFilter }}
+          </template>
+          <template v-else>
+            Priorità
+          </template>
         </UButton>
-      </div>
+      </UDropdownMenu>
 
-      <template #content>
-        <div
-          id="advanced-filters"
-          class="px-4 pb-4 space-y-4"
+      <!-- Issue Type Filter -->
+      <UDropdownMenu
+        v-if="issueTypes.length"
+        :items="[
+          { label: 'Tutti', click: () => issueTypeFilter = '' },
+          ...issueTypes.map(t => ({ label: t, click: () => issueTypeFilter = t }))
+        ]"
+      >
+        <UButton
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          trailing-icon="i-lucide-chevron-down"
+          :class="{ 'bg-[var(--ui-bg-elevated)] ring-1 ring-[var(--ui-border-accented)]': issueTypeFilter }"
         >
-          <!-- Filter Grid -->
-          <div class="grid grid-cols-2 gap-3">
-            <!-- Priority Filter -->
-            <UFormField
-              label="Priorità"
-              class="space-y-1.5"
-            >
-              <USelectMenu
-                v-model="priorityFilter"
-                :items="priorityItems"
-                placeholder="Tutte"
-                size="sm"
-                value-key="value"
-                aria-label="Filtra per priorità"
-                :ui="{ base: 'w-full' }"
-              >
-                <template #leading>
-                  <UIcon
-                    name="i-lucide-signal"
-                    class="w-4 h-4 text-[var(--ui-text-muted)]"
-                  />
-                </template>
-                <template #empty>
-                  <span class="text-[var(--ui-text-muted)] text-sm">Nessuna priorità</span>
-                </template>
-              </USelectMenu>
-            </UFormField>
+          {{ issueTypeFilter || 'Tipo' }}
+        </UButton>
+      </UDropdownMenu>
 
-            <!-- Issue Type Filter -->
-            <UFormField
-              label="Tipo"
-              class="space-y-1.5"
-            >
-              <USelectMenu
-                v-model="issueTypeFilter"
-                :items="issueTypes"
-                placeholder="Tutti"
-                size="sm"
-                aria-label="Filtra per tipo issue"
-                :ui="{ base: 'w-full' }"
-              >
-                <template #leading>
-                  <UIcon
-                    name="i-lucide-layout-list"
-                    class="w-4 h-4 text-[var(--ui-text-muted)]"
-                  />
-                </template>
-                <template #empty>
-                  <span class="text-[var(--ui-text-muted)] text-sm">Nessun tipo</span>
-                </template>
-              </USelectMenu>
-            </UFormField>
+      <!-- Assignee Filter -->
+      <UDropdownMenu
+        v-if="assignees.length"
+        :items="[
+          { label: 'Tutti', click: () => assigneeFilter = '' },
+          ...assignees.map(a => ({ label: a, click: () => assigneeFilter = a }))
+        ]"
+      >
+        <UButton
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          trailing-icon="i-lucide-chevron-down"
+          :class="{ 'bg-[var(--ui-bg-elevated)] ring-1 ring-[var(--ui-border-accented)]': assigneeFilter }"
+        >
+          {{ assigneeFilter || 'Assegnatario' }}
+        </UButton>
+      </UDropdownMenu>
 
-            <!-- Label Filter -->
-            <UFormField
-              label="Label"
-              class="space-y-1.5"
-            >
-              <USelectMenu
-                v-model="labelFilter"
-                :items="labels"
-                placeholder="Tutte"
-                size="sm"
-                searchable
-                searchable-placeholder="Cerca label..."
-                aria-label="Filtra per label"
-                :ui="{ base: 'w-full' }"
-              >
-                <template #leading>
-                  <UIcon
-                    name="i-lucide-tag"
-                    class="w-4 h-4 text-[var(--ui-text-muted)]"
-                  />
-                </template>
-                <template #empty>
-                  <span class="text-[var(--ui-text-muted)] text-sm">Nessuna label</span>
-                </template>
-              </USelectMenu>
-            </UFormField>
+      <!-- Label Filter -->
+      <UDropdownMenu
+        v-if="labels.length"
+        :items="[
+          { label: 'Tutte', click: () => labelFilter = '' },
+          ...labels.map(l => ({ label: l, click: () => labelFilter = l }))
+        ]"
+      >
+        <UButton
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          trailing-icon="i-lucide-chevron-down"
+          :class="{ 'bg-[var(--ui-bg-elevated)] ring-1 ring-[var(--ui-border-accented)]': labelFilter }"
+        >
+          <UIcon
+            v-if="labelFilter"
+            name="i-lucide-tag"
+            class="w-3.5 h-3.5"
+          />
+          {{ labelFilter || 'Label' }}
+        </UButton>
+      </UDropdownMenu>
 
-            <!-- Assignee Filter -->
-            <UFormField
-              label="Assegnatario"
-              class="space-y-1.5"
-            >
-              <USelectMenu
-                v-model="assigneeFilter"
-                :items="assignees"
-                placeholder="Tutti"
-                size="sm"
-                searchable
-                searchable-placeholder="Cerca assegnatario..."
-                aria-label="Filtra per assegnatario"
-                :ui="{ base: 'w-full' }"
-              >
-                <template #leading>
-                  <UIcon
-                    name="i-lucide-user"
-                    class="w-4 h-4 text-[var(--ui-text-muted)]"
-                  />
-                </template>
-                <template #empty>
-                  <span class="text-[var(--ui-text-muted)] text-sm">Nessun assegnatario</span>
-                </template>
-              </USelectMenu>
-            </UFormField>
-          </div>
+      <!-- Divider -->
+      <div class="h-5 w-px bg-[var(--ui-border)]" />
 
-          <!-- Sort Options -->
-          <div class="pt-2 border-t border-[var(--ui-border)]">
-            <UFormField
-              label="Ordina per"
-              class="space-y-1.5"
-            >
-              <div class="flex gap-2">
-                <USelectMenu
-                  v-model="sortBy"
-                  :items="sortOptions"
-                  value-key="value"
-                  size="sm"
-                  aria-label="Campo ordinamento"
-                  class="flex-1"
-                >
-                  <template #leading>
-                    <UIcon
-                      name="i-lucide-arrow-up-down"
-                      class="w-4 h-4 text-[var(--ui-text-muted)]"
-                    />
-                  </template>
-                </USelectMenu>
-                <UTooltip :text="sortOrder === 'asc' ? 'Ordine crescente' : 'Ordine decrescente'">
-                  <UButton
-                    color="neutral"
-                    variant="soft"
-                    size="sm"
-                    :icon="sortOrder === 'asc' ? 'i-lucide-arrow-up-narrow-wide' : 'i-lucide-arrow-down-wide-narrow'"
-                    :aria-label="sortOrder === 'asc' ? 'Ordine crescente' : 'Ordine decrescente'"
-                    @click="toggleSortOrder"
-                  />
-                </UTooltip>
-              </div>
-            </UFormField>
-          </div>
+      <!-- Sort -->
+      <UDropdownMenu :items="sortOptions.map(o => ({ label: o.label, click: () => sortBy = o.value }))">
+        <UButton
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          trailing-icon="i-lucide-chevron-down"
+        >
+          {{ getSortLabel(sortBy) }}
+        </UButton>
+      </UDropdownMenu>
 
-          <!-- Active Filters Pills -->
-          <div
-            v-if="hasActiveFilters"
-            class="flex flex-wrap gap-2 pt-2"
-          >
-            <UBadge
-              v-if="priorityFilter"
-              color="neutral"
-              variant="subtle"
-              class="gap-1 pr-1"
-            >
-              <UIcon
-                :name="getPriorityIcon(priorityFilter)"
-                class="w-3 h-3"
-              />
-              {{ priorityFilter }}
-              <UButton
-                color="neutral"
-                variant="ghost"
-                size="xs"
-                icon="i-lucide-x"
-                class="ml-1 -mr-1"
-                aria-label="Rimuovi filtro priorità"
-                @click="priorityFilter = ''"
-              />
-            </UBadge>
-            <UBadge
-              v-if="issueTypeFilter"
-              color="neutral"
-              variant="subtle"
-              class="gap-1 pr-1"
-            >
-              <UIcon
-                name="i-lucide-layout-list"
-                class="w-3 h-3"
-              />
-              {{ issueTypeFilter }}
-              <UButton
-                color="neutral"
-                variant="ghost"
-                size="xs"
-                icon="i-lucide-x"
-                class="ml-1 -mr-1"
-                aria-label="Rimuovi filtro tipo"
-                @click="issueTypeFilter = ''"
-              />
-            </UBadge>
-            <UBadge
-              v-if="labelFilter"
-              color="neutral"
-              variant="subtle"
-              class="gap-1 pr-1"
-            >
-              <UIcon
-                name="i-lucide-tag"
-                class="w-3 h-3"
-              />
-              {{ labelFilter }}
-              <UButton
-                color="neutral"
-                variant="ghost"
-                size="xs"
-                icon="i-lucide-x"
-                class="ml-1 -mr-1"
-                aria-label="Rimuovi filtro label"
-                @click="labelFilter = ''"
-              />
-            </UBadge>
-            <UBadge
-              v-if="assigneeFilter"
-              color="neutral"
-              variant="subtle"
-              class="gap-1 pr-1"
-            >
-              <UIcon
-                name="i-lucide-user"
-                class="w-3 h-3"
-              />
-              {{ assigneeFilter }}
-              <UButton
-                color="neutral"
-                variant="ghost"
-                size="xs"
-                icon="i-lucide-x"
-                class="ml-1 -mr-1"
-                aria-label="Rimuovi filtro assegnatario"
-                @click="assigneeFilter = ''"
-              />
-            </UBadge>
-          </div>
-        </div>
-      </template>
-    </UCollapsible>
+      <UTooltip :text="sortOrder === 'asc' ? 'Crescente' : 'Decrescente'">
+        <UButton
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          :icon="sortOrder === 'asc' ? 'i-lucide-arrow-up' : 'i-lucide-arrow-down'"
+          :aria-label="sortOrder === 'asc' ? 'Ordine crescente' : 'Ordine decrescente'"
+          @click="toggleSortOrder"
+        />
+      </UTooltip>
+
+      <!-- Spacer -->
+      <div class="flex-1" />
+
+      <!-- Results Count -->
+      <span class="text-sm text-[var(--ui-text-muted)]">
+        <span class="font-medium text-[var(--ui-text)]">{{ filteredCount }}</span>
+        di {{ totalCount }}
+      </span>
+
+      <!-- Clear Filters -->
+      <UButton
+        v-if="hasActiveFilters"
+        color="neutral"
+        variant="ghost"
+        size="sm"
+        icon="i-lucide-x"
+        @click="$emit('clearFilters')"
+      >
+        Rimuovi filtri
+      </UButton>
+    </div>
+
+    <!-- Active Filters Pills (only show if filters are active) -->
+    <div
+      v-if="hasActiveFilters"
+      class="px-3 pb-3 flex flex-wrap items-center gap-2 border-t border-[var(--ui-border)] pt-3"
+    >
+      <span class="text-xs text-[var(--ui-text-muted)]">Filtri:</span>
+
+      <UBadge
+        v-if="statusFilter && statusFilter !== 'all'"
+        color="primary"
+        variant="subtle"
+        size="sm"
+        class="gap-1 pr-1"
+      >
+        Stato: {{ getStatusLabel(statusFilter) }}
+        <UButton
+          color="primary"
+          variant="ghost"
+          size="xs"
+          icon="i-lucide-x"
+          class="-mr-1"
+          aria-label="Rimuovi filtro stato"
+          @click="statusFilter = 'all'"
+        />
+      </UBadge>
+
+      <UBadge
+        v-if="priorityFilter"
+        color="primary"
+        variant="subtle"
+        size="sm"
+        class="gap-1 pr-1"
+      >
+        <UIcon
+          :name="getPriorityIcon(priorityFilter)"
+          class="w-3 h-3"
+        />
+        {{ priorityFilter }}
+        <UButton
+          color="primary"
+          variant="ghost"
+          size="xs"
+          icon="i-lucide-x"
+          class="-mr-1"
+          aria-label="Rimuovi filtro priorità"
+          @click="priorityFilter = ''"
+        />
+      </UBadge>
+
+      <UBadge
+        v-if="issueTypeFilter"
+        color="primary"
+        variant="subtle"
+        size="sm"
+        class="gap-1 pr-1"
+      >
+        {{ issueTypeFilter }}
+        <UButton
+          color="primary"
+          variant="ghost"
+          size="xs"
+          icon="i-lucide-x"
+          class="-mr-1"
+          aria-label="Rimuovi filtro tipo"
+          @click="issueTypeFilter = ''"
+        />
+      </UBadge>
+
+      <UBadge
+        v-if="assigneeFilter"
+        color="primary"
+        variant="subtle"
+        size="sm"
+        class="gap-1 pr-1"
+      >
+        <UIcon
+          name="i-lucide-user"
+          class="w-3 h-3"
+        />
+        {{ assigneeFilter }}
+        <UButton
+          color="primary"
+          variant="ghost"
+          size="xs"
+          icon="i-lucide-x"
+          class="-mr-1"
+          aria-label="Rimuovi filtro assegnatario"
+          @click="assigneeFilter = ''"
+        />
+      </UBadge>
+
+      <UBadge
+        v-if="labelFilter"
+        color="primary"
+        variant="subtle"
+        size="sm"
+        class="gap-1 pr-1"
+      >
+        <UIcon
+          name="i-lucide-tag"
+          class="w-3 h-3"
+        />
+        {{ labelFilter }}
+        <UButton
+          color="primary"
+          variant="ghost"
+          size="xs"
+          icon="i-lucide-x"
+          class="-mr-1"
+          aria-label="Rimuovi filtro label"
+          @click="labelFilter = ''"
+        />
+      </UBadge>
+    </div>
   </div>
 </template>

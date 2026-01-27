@@ -54,7 +54,13 @@ export class JiraClient {
       throw new Error(`Jira API error (${res.status}): ${error}`)
     }
 
-    return res.json()
+    // Handle empty responses (e.g., 204 No Content from PUT/DELETE)
+    const text = await res.text()
+    if (!text) {
+      return undefined as T
+    }
+
+    return JSON.parse(text)
   }
 
   async testConnection(): Promise<{ success: boolean, user?: string, error?: string }> {
