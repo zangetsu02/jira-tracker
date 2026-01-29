@@ -15,11 +15,15 @@ interface AnalysisData {
     partial: number
     missing: number
     unclear: number
+    ignored: number
   }
 }
 
+const showIgnored = ref(false)
+
 const { data, pending, error, refresh } = await useFetch<AnalysisData>(
-  () => `/api/analysis/${name.value}`
+  () => `/api/analysis/${name.value}${showIgnored.value ? '?includeIgnored=true' : ''}`,
+  { watch: [showIgnored] }
 )
 
 const selectedResult = ref<(AnalysisResult & { usecase?: UseCase }) | null>(null)
@@ -27,6 +31,8 @@ const showJiraModal = ref(false)
 const filterStatus = ref<string>('all')
 const expandedResultId = ref<number | null>(null)
 const deletingId = ref<number | null>(null)
+const ignoringId = ref<number | null>(null)
+const restoringId = ref<number | null>(null)
 const showChatSlideover = ref(false)
 const chatResult = ref<(AnalysisResult & { usecase?: UseCase }) | null>(null)
 
@@ -35,16 +41,28 @@ const openChat = (result: AnalysisResult & { usecase?: UseCase }) => {
   showChatSlideover.value = true
 }
 
-const filterTabs = computed(() => [
-  { id: 'all', label: 'Tutti', count: data.value?.summary.total ?? 0, color: 'neutral' as const },
-  { id: 'implemented', label: 'Implementati', count: data.value?.summary.implemented ?? 0, color: 'success' as const },
-  { id: 'partial', label: 'Parziali', count: data.value?.summary.partial ?? 0, color: 'warning' as const },
-  { id: 'missing', label: 'Mancanti', count: data.value?.summary.missing ?? 0, color: 'error' as const },
-  { id: 'unclear', label: 'Non chiari', count: data.value?.summary.unclear ?? 0, color: 'neutral' as const }
-])
+const filterTabs = computed(() => {
+  const tabs = [
+    { id: 'all', label: 'Tutti', count: data.value?.summary.total ?? 0, color: 'neutral' as const },
+    { id: 'implemented', label: 'Implementati', count: data.value?.summary.implemented ?? 0, color: 'success' as const },
+    { id: 'partial', label: 'Parziali', count: data.value?.summary.partial ?? 0, color: 'warning' as const },
+    { id: 'missing', label: 'Mancanti', count: data.value?.summary.missing ?? 0, color: 'error' as const },
+    { id: 'unclear', label: 'Non chiari', count: data.value?.summary.unclear ?? 0, color: 'neutral' as const }
+  ]
+
+  // Mostra tab Ignorati solo se ce ne sono
+  const ignoredCount = data.value?.summary.ignored ?? 0
+  if (ignoredCount > 0) {
+    tabs.push({ id: 'ignored', label: 'Ignorati', count: ignoredCount, color: 'neutral' as const })
+  }
+
+  return tabs
+})
 
 const filteredResults = computed(() => {
   if (!data.value?.results) return []
+  // Per il tab "Ignorati" mostriamo tutti i risultati (già filtrati dall'API)
+  if (showIgnored.value) return data.value.results
   if (filterStatus.value === 'all') return data.value.results
   return data.value.results.filter(r => r.status === filterStatus.value)
 })
@@ -85,6 +103,47 @@ const handleDeleteResult = async (result: AnalysisResult & { usecase?: UseCase }
   }
 }
 
+const handleIgnoreResult = async (result: AnalysisResult & { usecase?: UseCase }) => {
+  ignoringId.value = result.id
+  try {
+    await $fetch(`/api/analysis-result/${result.id}`, {
+      method: 'PATCH',
+      body: { ignored: true }
+    })
+    await refresh()
+  } catch (e: any) {
+    alert(`Errore durante l'operazione: ${e.message || 'Errore sconosciuto'}`)
+  } finally {
+    ignoringId.value = null
+  }
+}
+
+const handleRestoreResult = async (result: AnalysisResult & { usecase?: UseCase }) => {
+  restoringId.value = result.id
+  try {
+    await $fetch(`/api/analysis-result/${result.id}`, {
+      method: 'PATCH',
+      body: { ignored: false }
+    })
+    await refresh()
+  } catch (e: any) {
+    alert(`Errore durante l'operazione: ${e.message || 'Errore sconosciuto'}`)
+  } finally {
+    restoringId.value = null
+  }
+}
+
+// Gestisce il cambio di tab
+const handleTabChange = (tabId: string) => {
+  if (tabId === 'ignored') {
+    showIgnored.value = true
+    filterStatus.value = 'all'
+  } else {
+    showIgnored.value = false
+    filterStatus.value = tabId
+  }
+}
+
 // Auto-expand highlighted result
 onMounted(() => {
   if (highlightId.value) {
@@ -118,13 +177,16 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
   }
 
   if (newIndex !== currentIndex) {
-    filterStatus.value = tabs[newIndex].id
+    handleTabChange(tabs[newIndex].id)
     nextTick(() => {
       const tabEl = document.querySelector(`[data-tab-index="${newIndex}"]`) as HTMLElement
       tabEl?.focus()
     })
   }
 }
+
+// Determina quale tab è attivo
+const activeTabId = computed(() => showIgnored.value ? 'ignored' : filterStatus.value)
 </script>
 
 <template>
@@ -423,21 +485,21 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
               v-for="(tab, index) in filterTabs"
               :key="tab.id"
               role="tab"
-              :aria-selected="filterStatus === tab.id"
+              :aria-selected="activeTabId === tab.id"
               :aria-controls="`results-panel-${tab.id}`"
-              :tabindex="filterStatus === tab.id ? 0 : -1"
+              :tabindex="activeTabId === tab.id ? 0 : -1"
               :data-tab-index="index"
               class="px-3 py-1.5 text-xs font-medium transition-all duration-200 flex items-center gap-2"
-              :class="filterStatus === tab.id
+              :class="activeTabId === tab.id
                 ? 'bg-[var(--ui-text)] text-[var(--ui-bg)]'
                 : 'bg-[var(--ui-bg-muted)] text-[var(--ui-text-muted)] hover:bg-[var(--ui-bg-accent)] hover:text-[var(--ui-text)]'"
-              @click="filterStatus = tab.id"
+              @click="handleTabChange(tab.id)"
               @keydown="handleTabKeydown($event, index)"
             >
               {{ tab.label }}
               <span
                 class="px-1.5 py-0.5 text-[10px] font-mono"
-                :class="filterStatus === tab.id
+                :class="activeTabId === tab.id
                   ? 'bg-[var(--ui-bg)] text-[var(--ui-text)]'
                   : 'bg-[var(--ui-bg-accent)] text-[var(--ui-text-dimmed)]'"
               >
@@ -462,15 +524,15 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
             Nessun risultato
           </p>
           <p class="empty-state__description">
-            {{ filterStatus === 'all' ? 'Nessuna analisi disponibile per questo microservizio' : `Nessun use case con stato "${filterTabs.find(t => t.id === filterStatus)?.label}"` }}
+            {{ showIgnored ? 'Nessun avviso ignorato' : (filterStatus === 'all' ? 'Nessuna analisi disponibile per questo microservizio' : `Nessun use case con stato "${filterTabs.find(t => t.id === filterStatus)?.label}"`) }}
           </p>
           <UButton
-            v-if="filterStatus !== 'all'"
+            v-if="!showIgnored && filterStatus !== 'all'"
             color="neutral"
             variant="soft"
             size="sm"
             class="mt-4"
-            @click="filterStatus = 'all'"
+            @click="handleTabChange('all')"
           >
             Mostra tutti
           </UButton>
@@ -537,6 +599,12 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
                     }"
                   >
                     {{ result.confidence }}
+                  </span>
+                  <span
+                    v-if="result.ignored"
+                    class="tag text-[10px] shrink-0 bg-[var(--ui-bg-muted)] text-[var(--ui-text-dimmed)]"
+                  >
+                    Ignorato
                   </span>
                 </div>
               </div>
@@ -649,24 +717,66 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
 
                   <!-- Action Buttons -->
                   <div class="mt-6 pt-4 border-t border-[var(--ui-border)] flex justify-between items-center gap-2">
-                    <button
-                      type="button"
-                      class="h-10 px-5 bg-[var(--ui-error)] text-white font-medium text-sm flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
-                      :disabled="deletingId === result.id"
-                      @click.stop="handleDeleteResult(result)"
-                    >
-                      <UIcon
-                        v-if="deletingId !== result.id"
-                        name="i-lucide-trash-2"
-                        class="w-4 h-4"
-                      />
-                      <UIcon
-                        v-else
-                        name="i-lucide-loader-2"
-                        class="w-4 h-4 animate-spin"
-                      />
-                      Elimina
-                    </button>
+                    <div class="flex items-center gap-2">
+                      <button
+                        type="button"
+                        class="h-10 px-5 bg-[var(--ui-error)] text-white font-medium text-sm flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+                        :disabled="deletingId === result.id"
+                        @click.stop="handleDeleteResult(result)"
+                      >
+                        <UIcon
+                          v-if="deletingId !== result.id"
+                          name="i-lucide-trash-2"
+                          class="w-4 h-4"
+                        />
+                        <UIcon
+                          v-else
+                          name="i-lucide-loader-2"
+                          class="w-4 h-4 animate-spin"
+                        />
+                        Elimina
+                      </button>
+                      <!-- Bottone Ignora per risultati attivi -->
+                      <button
+                        v-if="!result.ignored"
+                        type="button"
+                        class="h-10 px-5 bg-[var(--ui-bg-muted)] text-[var(--ui-text)] border border-[var(--ui-border)] font-medium text-sm flex items-center gap-2 hover:bg-[var(--ui-bg-accent)] transition-colors disabled:opacity-50"
+                        :disabled="ignoringId === result.id"
+                        @click.stop="handleIgnoreResult(result)"
+                      >
+                        <UIcon
+                          v-if="ignoringId !== result.id"
+                          name="i-lucide-eye-off"
+                          class="w-4 h-4"
+                        />
+                        <UIcon
+                          v-else
+                          name="i-lucide-loader-2"
+                          class="w-4 h-4 animate-spin"
+                        />
+                        Ignora
+                      </button>
+                      <!-- Bottone Ripristina per risultati ignorati -->
+                      <button
+                        v-if="result.ignored"
+                        type="button"
+                        class="h-10 px-5 bg-[var(--ui-success)] text-white font-medium text-sm flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+                        :disabled="restoringId === result.id"
+                        @click.stop="handleRestoreResult(result)"
+                      >
+                        <UIcon
+                          v-if="restoringId !== result.id"
+                          name="i-lucide-eye"
+                          class="w-4 h-4"
+                        />
+                        <UIcon
+                          v-else
+                          name="i-lucide-loader-2"
+                          class="w-4 h-4 animate-spin"
+                        />
+                        Ripristina
+                      </button>
+                    </div>
                     <div class="flex items-center gap-2">
                       <button
                         type="button"
@@ -680,7 +790,7 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
                         Chiedi a Claude
                       </button>
                       <button
-                        v-if="!result.jiraIssueKey && result.status !== 'implemented'"
+                        v-if="!result.jiraIssueKey && result.status !== 'implemented' && !result.ignored"
                         type="button"
                         class="h-10 px-5 bg-[var(--ui-info)] text-white font-medium text-sm flex items-center gap-2 hover:opacity-90 transition-opacity"
                         @click.stop="openJiraModal(result)"

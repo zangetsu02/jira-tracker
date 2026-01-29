@@ -57,6 +57,13 @@
       "when": 1769676819285,
       "tag": "0007_handy_genesis",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1769711395858,
+      "tag": "0008_brave_hex",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, varchar, integer } from 'drizzle-orm/pg-core'
+import { pgTable, serial, text, timestamp, varchar, integer, boolean } from 'drizzle-orm/pg-core'
 import { microservices } from './microservices'
 import { usecases } from './usecases'
 
@@ -12,5 +12,7 @@ export const analysisResults = pgTable('analysis_results', {
   notes: text('notes'),
   jiraIssueKey: varchar('jira_issue_key', { length: 50 }),
   jiraIssueSummary: varchar('jira_issue_summary', { length: 500 }),
-  analyzedAt: timestamp('analyzed_at').defaultNow()
+  analyzedAt: timestamp('analyzed_at').defaultNow(),
+  ignored: boolean('ignored').default(false),
+  ignoredAt: timestamp('ignored_at')
 })

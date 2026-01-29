@@ -4,6 +4,8 @@ import { microservices, usecases, analysisResults } from '~~/server/database/sch
 
 export default defineEventHandler(async (event) => {
   const msName = getRouterParam(event, 'msName')
+  const query = getQuery(event)
+  const includeIgnored = query.includeIgnored === 'true'
 
   if (!msName) {
     throw createError({
@@ -42,17 +44,23 @@ export default defineEventHandler(async (event) => {
     usecase: msUsecases.find(uc => uc.id === analysis.usecaseId)
   }))
 
+  // Separa risultati attivi da ignorati
+  const activeResults = resultsWithUsecases.filter(r => !r.ignored)
+  const ignoredResults = resultsWithUsecases.filter(r => r.ignored)
+
+  // Summary conta solo risultati attivi
   const summary = {
-    total: resultsWithUsecases.length,
-    implemented: resultsWithUsecases.filter(r => r.status === 'implemented').length,
-    partial: resultsWithUsecases.filter(r => r.status === 'partial').length,
-    missing: resultsWithUsecases.filter(r => r.status === 'missing').length,
-    unclear: resultsWithUsecases.filter(r => r.status === 'unclear').length
+    total: activeResults.length,
+    implemented: activeResults.filter(r => r.status === 'implemented').length,
+    partial: activeResults.filter(r => r.status === 'partial').length,
+    missing: activeResults.filter(r => r.status === 'missing').length,
+    unclear: activeResults.filter(r => r.status === 'unclear').length,
+    ignored: ignoredResults.length
   }
 
   return {
     microservice: ms[0],
-    results: resultsWithUsecases,
+    results: includeIgnored ? ignoredResults : activeResults,
     summary
   }
 })
