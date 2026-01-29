@@ -54,8 +54,10 @@ export default defineEventHandler(async (event) => {
               .where(eq(microservicePdfs.microserviceId, dbRecord.id))
           : []
 
-        const implementedCount = analyses.filter(a => a.status === 'implemented').length
-        const totalCount = analyses.length
+        // Escludi risultati ignorati dalle statistiche
+        const activeAnalyses = analyses.filter(a => !a.ignored)
+        const implementedCount = activeAnalyses.filter(a => a.status === 'implemented').length
+        const totalCount = activeAnalyses.length
 
         return {
           ...dbRecord,

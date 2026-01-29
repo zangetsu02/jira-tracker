@@ -72,8 +72,14 @@ const canExtract = computed(() => hasPdfs.value && !extracting.value && !analyzi
 const canAnalyze = computed(() => hasUseCases.value && !analyzing.value && !extracting.value)
 const deletingPdfId = ref<number | null>(null)
 
+// Filtra risultati ignorati
+const activeAnalyses = computed(() => {
+  const allAnalyses = microservice.value?.analyses ?? []
+  return allAnalyses.filter(a => !a.ignored)
+})
+
 const stats = computed(() => {
-  const analyses = microservice.value?.analyses ?? []
+  const analyses = activeAnalyses.value
   return {
     total: analyses.length,
     implemented: analyses.filter(a => a.status === 'implemented').length,
@@ -757,7 +763,7 @@ const formatDate = (date: string | null) => {
           </div>
 
           <div
-            v-if="!microservice.analyses?.length"
+            v-if="activeAnalyses.length === 0"
             class="empty-state"
           >
             <UIcon
@@ -777,7 +783,7 @@ const formatDate = (date: string | null) => {
             class="max-h-[400px] overflow-y-auto"
           >
             <div
-              v-for="(analysis, index) in microservice.analyses"
+              v-for="(analysis, index) in activeAnalyses"
               :key="analysis.id"
               class="data-row data-row--clickable animate-slide-in-right"
               :style="{ animationDelay: `${index * 0.03}s` }"
