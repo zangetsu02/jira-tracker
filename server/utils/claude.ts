@@ -1,4 +1,6 @@
-import { spawn } from 'child_process'
+import { spawn, execSync } from 'child_process'
+import { unlink, mkdir } from 'fs/promises'
+import { join, basename } from 'path'
 import { buildAnalysisPrompt } from '../prompts/analysis'
 import {
   buildExtractUseCasesPrompt,
@@ -7,7 +9,6 @@ import {
 } from '../prompts/extract-usecases'
 import {
   CLAUDE_TIMEOUT_MS,
-  MIN_RESPONSE_LENGTH,
   type IssuesOnlyResult
 } from './analysis'
 import type { UseCase } from '~~/shared/utils/types'
@@ -290,27 +291,81 @@ export async function analyzeMicroservice(
 }
 
 /**
- * Extract use cases from PDF document
+ * Convert PDF to text using pdftotext CLI tool
+ */
+async function convertPdfToText(pdfPath: string): Promise<string> {
+  const tempDir = join(process.cwd(), 'uploads', 'temp')
+  await mkdir(tempDir, { recursive: true })
+
+  const textFilename = `${basename(pdfPath, '.pdf')}-${Date.now()}.txt`
+  const textPath = join(tempDir, textFilename)
+
+  try {
+    // Use pdftotext to convert PDF to text (-layout preserves formatting)
+    execSync(`pdftotext -layout "${pdfPath}" "${textPath}"`, { encoding: 'utf-8' })
+    console.log(`[convertPdfToText] Converted ${pdfPath} to ${textPath}`)
+    return textPath
+  } catch (error) {
+    console.error(`[convertPdfToText] Failed to convert ${pdfPath}:`, error)
+    throw new Error(`Failed to convert PDF to text: ${pdfPath}`)
+  }
+}
+
+/**
+ * Extract use cases from PDF document(s)
+ */
+export async function extractUseCasesFromPdfs(
+  pdfPaths: string[],
+  onProgress?: ProgressCallback
+): Promise<UseCaseExtractionResult> {
+  console.log('[extractUseCasesFromPdfs] Starting extraction')
+  console.log('[extractUseCasesFromPdfs] PDF paths:', pdfPaths)
+
+  onProgress?.('Preparazione estrazione use case...', 'preparing')
+  onProgress?.(`Conversione ${pdfPaths.length} PDF in testo...`, 'info')
+
+  // Convert all PDFs to text files
+  const textPaths: string[] = []
+  try {
+    for (const pdfPath of pdfPaths) {
+      onProgress?.(`Conversione ${basename(pdfPath)}...`, 'preparing')
+      const textPath = await convertPdfToText(pdfPath)
+      textPaths.push(textPath)
+    }
+
+    const prompt = buildExtractUseCasesPrompt({ textPaths })
+    console.log('[extractUseCasesFromPdfs] Prompt length:', prompt.length)
+
+    onProgress?.(`Estrazione use case da ${textPaths.length} file...`, 'info')
+
+    const response = await executeClaudeCli(prompt, textPaths, onProgress)
+
+    console.log('[extractUseCasesFromPdfs] Response length:', response.length)
+    console.log('[extractUseCasesFromPdfs] Response preview:', response.substring(0, 300))
+
+    onProgress?.('Parsing use case...', 'parsing')
+
+    return parseUseCasesJson(response)
+  } finally {
+    // Cleanup temp text files
+    for (const textPath of textPaths) {
+      try {
+        await unlink(textPath)
+        console.log(`[extractUseCasesFromPdfs] Cleaned up ${textPath}`)
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+  }
+}
+
+/**
+ * Extract use cases from PDF document (single file - backward compatible)
+ * @deprecated Use extractUseCasesFromPdfs instead
  */
 export async function extractUseCasesFromPdf(
   pdfPath: string,
   onProgress?: ProgressCallback
 ): Promise<UseCaseExtractionResult> {
-  const prompt = buildExtractUseCasesPrompt({ pdfPath })
-
-  console.log('[extractUseCasesFromPdf] Starting extraction')
-  console.log('[extractUseCasesFromPdf] PDF path:', pdfPath)
-  console.log('[extractUseCasesFromPdf] Prompt length:', prompt.length)
-
-  onProgress?.('Preparazione estrazione use case...', 'preparing')
-  onProgress?.(`PDF: ${pdfPath}`, 'info')
-
-  const response = await executeClaudeCli(prompt, [pdfPath], onProgress)
-
-  console.log('[extractUseCasesFromPdf] Response length:', response.length)
-  console.log('[extractUseCasesFromPdf] Response preview:', response.substring(0, 300))
-
-  onProgress?.('Parsing use case...', 'parsing')
-
-  return parseUseCasesJson(response)
+  return extractUseCasesFromPdfs([pdfPath], onProgress)
 }

@@ -50,6 +50,13 @@
       "when": 1769354596020,
       "tag": "0006_even_black_bird",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1769676819285,
+      "tag": "0007_handy_genesis",
+      "breakpoints": true
     }
   ]
 }
