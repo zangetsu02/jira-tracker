@@ -9,6 +9,7 @@ export type JiraConfig = typeof jiraConfig.$inferSelect
 export type AppSettings = typeof appSettings.$inferSelect
 
 export interface MicroserviceWithStatus extends Microservice {
+  pdfCount: number
   hasAnalysis: boolean
   lastAnalysisStatus?: 'success' | 'partial' | 'issues'
   useCaseCount?: number
