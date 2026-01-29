@@ -55,7 +55,16 @@ async function main() {
       path: ms.pdfPath
     })
 
-    console.log(`Migrated PDF for ${ms.name}`)
+    // Clear old fields to avoid confusion
+    await db
+      .update(microservices)
+      .set({
+        pdfFilename: null,
+        pdfPath: null
+      })
+      .where(eq(microservices.id, ms.id))
+
+    console.log(`Migrated PDF for ${ms.name} (old fields cleared)`)
     migrated++
   }
 
