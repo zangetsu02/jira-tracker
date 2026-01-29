@@ -9,13 +9,22 @@ export interface AnalysisPromptParams {
 
 const PROMPT_TEMPLATE = `# Analisi Microservizio
 
-Sei un senior software engineer specializzato in migrazione da sistemi legacy ASPX a microservizi.
+Sei un senior software engineer specializzato in migrazione da sistemi legacy ASPX a microservizi Java/Spring Boot.
+
+IMPORTANTE: Rispondi SEMPRE in ITALIANO. Tutti i titoli, descrizioni e contenuti delle issue devono essere in lingua italiana.
 
 ## Contesto
 
-- **Microservizio**: \`{{microservicePath}}\`
+- **Microservizio**: \`{{microservicePath}}\` (Java/Spring Boot)
 {{#if legacyPath}}- **Codice legacy ASPX**: \`{{legacyPath}}\`{{/if}}
 {{#if pdfPath}}- **Documento requisiti (PDF)**: \`{{pdfPath}}\`{{/if}}
+
+## Stack Tecnologico del Microservizio
+- Java 17+
+- Spring Boot 3.x
+- Spring Web (REST API)
+- Spring Data JPA
+- Maven/Gradle
 
 {{#if usecases}}
 ## Use Case da Verificare
@@ -60,15 +69,21 @@ Restituisci ESCLUSIVAMENTE un oggetto JSON valido con questa struttura esatta:
 {"issues":[{"code":"ISSUE-001","title":"Titolo","type":"missing_implementation","severity":"high","priority":"high","description":"Descrizione","relatedUseCases":["UC-001"],"legacyReference":null,"microserviceReference":"src/file.ts:45","acceptanceCriteria":["Criterio 1"],"suggestedLabels":["backend"],"estimatedEffort":"M"}]}
 
 REGOLE CRITICHE:
-- PRIMA leggi tutti i file necessari usando il tool Read
-- DOPO aver analizzato, genera IMMEDIATAMENTE il JSON
-- Output SOLO JSON, nessun testo prima o dopo
+- LINGUA: Scrivi TUTTO in ITALIANO (titoli, descrizioni, criteri di accettazione, note)
+- EFFICIENZA: Usa massimo 8-10 tool calls. Leggi SOLO i file essenziali
+- STRUTTURA JAVA: Cerca in src/main/java per Controller, Service, Repository, Entity
+- Usa Glob per trovare i file, poi leggi solo quelli rilevanti
+- NON leggere tutti i file - concentrati su *Controller.java, *Service.java, *Repository.java
+- IMPORTANTE: L'ultima cosa che devi fare e' SEMPRE generare il JSON di output. Non terminare mai con una tool call.
+- DOPO aver analizzato, genera IMMEDIATAMENTE il JSON come testo (NON come tool call)
+- Output SOLO JSON valido, nessun testo prima o dopo
 - Nessun markdown, nessun code fence, nessun commento
 - JSON deve iniziare con { e terminare con }
 - NON scrivere frasi come "Based on my analysis..." - vai direttamente al JSON
 - Usa null per campi non applicabili
 - In relatedUseCases usa i codici degli use case forniti sopra
-- Se non ci sono issue, restituisci {"issues":[]}`
+- Se non ci sono issue, restituisci {"issues":[]}
+- RICORDA: Devi SEMPRE concludere con l'output JSON testuale, mai con una tool call`
 
 /**
  * Build analysis prompt from template

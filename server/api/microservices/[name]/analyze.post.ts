@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, and, isNull } from 'drizzle-orm'
 import { useDB } from '~~/server/utils/db'
 import { microservices, analysisResults, usecases } from '~~/server/database/schema'
 import { analyzeMicroservice } from '~~/server/utils/claude'
@@ -45,8 +45,13 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    // Delete old analysis results
-    await db.delete(analysisResults).where(eq(analysisResults.microserviceId, ms.id))
+    // Delete old analysis results, but preserve results with Jira issues
+    await db.delete(analysisResults).where(
+      and(
+        eq(analysisResults.microserviceId, ms.id),
+        isNull(analysisResults.jiraIssueKey)
+      )
+    )
 
     // Run analysis
     const result = await analyzeMicroservice(ms.path, legacyPath, pdfPath)

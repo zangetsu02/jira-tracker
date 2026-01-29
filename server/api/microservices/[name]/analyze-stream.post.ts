@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, and, isNull } from 'drizzle-orm'
 import { useDB } from '~~/server/utils/db'
 import { microservices, analysisResults, usecases } from '~~/server/database/schema'
 import { analyzeMicroservice } from '~~/server/utils/claude'
@@ -56,9 +56,14 @@ export default defineEventHandler(async (event) => {
   try {
     sendEvent('status', { step: 'init', message: 'Inizializzazione analisi...' })
 
-    // Delete old data
-    sendEvent('status', { step: 'cleanup', message: 'Pulizia dati precedenti...' })
-    await db.delete(analysisResults).where(eq(analysisResults.microserviceId, ms.id))
+    // Delete old data, but preserve results with Jira issues
+    sendEvent('status', { step: 'cleanup', message: 'Pulizia dati precedenti (preservando issue Jira)...' })
+    await db.delete(analysisResults).where(
+      and(
+        eq(analysisResults.microserviceId, ms.id),
+        isNull(analysisResults.jiraIssueKey)
+      )
+    )
 
     sendEvent('status', { step: 'claude_start', message: 'Avvio analisi con Claude...' })
 

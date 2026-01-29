@@ -23,7 +23,18 @@ export type ProgressCallback = (message: string, phase: string) => void
 interface ClaudeResultMessage {
   type: 'result'
   result?: string
+  subtype?: string
   cost_usd?: number
+  duration_ms?: number
+  duration_api_ms?: number
+  is_error?: boolean
+  num_turns?: number
+  session_id?: string
+  // Some versions put the response in different fields
+  message?: string
+  text?: string
+  content?: string
+  response?: string
 }
 
 interface ClaudeAssistantMessage {
@@ -36,9 +47,16 @@ interface ClaudeAssistantMessage {
 interface ClaudeErrorMessage {
   type: 'error'
   is_error?: boolean
+  error?: { message?: string }
 }
 
-type ClaudeMessage = ClaudeResultMessage | ClaudeAssistantMessage | ClaudeErrorMessage
+interface ClaudeSystemMessage {
+  type: 'system'
+  subtype?: string
+  message?: string
+}
+
+type ClaudeMessage = ClaudeResultMessage | ClaudeAssistantMessage | ClaudeErrorMessage | ClaudeSystemMessage | { type: string;[key: string]: unknown }
 
 // ============================================================================
 // CLAUDE CLI EXECUTION
@@ -64,7 +82,7 @@ async function executeClaudeCli(
       '--verbose',
       '--permission-mode', 'bypassPermissions',
       '--model', 'sonnet',
-      '--max-budget-usd', '5',
+      '--max-turns', '20',
       ...addDirArgs
     ]
 
@@ -89,31 +107,65 @@ async function executeClaudeCli(
       }
     }, CLAUDE_TIMEOUT_MS)
 
+    let lineBuffer = ''
+    
     proc.stdout.on('data', (data: Buffer) => {
       hasReceivedData = true
-      const lines = data.toString().split('\n').filter(Boolean)
-
-      for (const line of lines) {
+      // Accumulate data in buffer to handle split lines
+      lineBuffer += data.toString()
+      
+      // Process complete lines (ending with newline)
+      const lines = lineBuffer.split('\n')
+      // Keep the last incomplete line in buffer
+      lineBuffer = lines.pop() || ''
+      
+      for (const line of lines.filter(Boolean)) {
         const message = parseClaudeMessage(line)
-        if (!message) continue
+        if (!message) {
+          // Log unparseable lines that might contain useful data
+          if (line.trim().startsWith('{') || line.includes('issues')) {
+            console.log('[Claude] Unparseable JSON line:', line.substring(0, 300))
+          }
+          continue
+        }
 
-        console.log('[Claude] Message type:', message.type)
+        console.log('[Claude] Message type:', message.type, 'keys:', Object.keys(message).join(','))
 
         if (message.type === 'result') {
           const resultMsg = message as ClaudeResultMessage
-          console.log('[Claude] Result message, result length:', resultMsg.result?.length ?? 0)
-          // Always use result if present - it's the final response
-          if (resultMsg.result) {
+          // Log the full result message to understand its structure
+          console.log('[Claude] Result message received (full):', JSON.stringify(resultMsg).substring(0, 1000))
+          console.log('[Claude] Result message fields:', JSON.stringify({
+            subtype: resultMsg.subtype,
+            resultLength: resultMsg.result?.length ?? 0,
+            resultPreview: resultMsg.result?.substring(0, 200),
+            messageLength: typeof resultMsg.message === 'string' ? resultMsg.message.length : 0,
+            textLength: resultMsg.text?.length ?? 0,
+            contentLength: resultMsg.content?.length ?? 0,
+            responseLength: resultMsg.response?.length ?? 0,
+            cost_usd: resultMsg.cost_usd,
+            is_error: resultMsg.is_error,
+            num_turns: resultMsg.num_turns
+          }))
+          
+          // Try to find the response in various possible fields
+          const responseText = resultMsg.result 
+            || (typeof resultMsg.message === 'string' ? resultMsg.message : null)
+            || resultMsg.text 
+            || resultMsg.content 
+            || resultMsg.response
+          
+          if (responseText) {
             // Only use result if it contains JSON or is longer than accumulated text
-            if (resultMsg.result.includes('{') || resultMsg.result.length > fullText.length) {
-              fullText = resultMsg.result
+            if (responseText.includes('{') || responseText.length > fullText.length) {
+              fullText = responseText
               console.log('[Claude] Using result as fullText, length:', fullText.length)
             } else {
               console.log('[Claude] Ignoring short result, keeping accumulated text, length:', fullText.length)
             }
-            if (resultMsg.cost_usd) {
-              onProgress?.(`Costo: $${resultMsg.cost_usd.toFixed(4)}`, 'cost')
-            }
+          }
+          if (resultMsg.cost_usd) {
+            onProgress?.(`Costo: $${resultMsg.cost_usd.toFixed(4)}`, 'cost')
           }
         } else if (message.type === 'assistant') {
           const assistantMsg = message as ClaudeAssistantMessage
@@ -128,6 +180,15 @@ async function executeClaudeCli(
             const contentTypes = assistantMsg.message?.content?.map(c => c.type) || []
             console.log('[Claude] Assistant message without text, content types:', contentTypes)
           }
+        } else {
+          // Log any other message types for debugging
+          console.log('[Claude] Other message type:', message.type, JSON.stringify(message).substring(0, 500))
+          
+          // Check if this message has any field that looks like JSON output
+          const msgStr = JSON.stringify(message)
+          if (msgStr.includes('"issues"') && msgStr.includes('[')) {
+            console.log('[Claude] Found issues in unexpected message type!')
+          }
         }
       }
     })
@@ -139,6 +200,19 @@ async function executeClaudeCli(
 
     proc.on('close', (code) => {
       clearTimeout(timeout)
+      
+      // Process any remaining data in buffer
+      if (lineBuffer.trim()) {
+        const message = parseClaudeMessage(lineBuffer)
+        if (message?.type === 'result') {
+          const resultMsg = message as ClaudeResultMessage
+          if (resultMsg.result && resultMsg.result.includes('{')) {
+            fullText = resultMsg.result
+            console.log('[Claude] Got result from final buffer, length:', fullText.length)
+          }
+        }
+      }
+      
       console.log('[Claude] Process closed with code:', code, 'fullText length:', fullText.length)
       if (fullText.length > 0) {
         onProgress?.('Analisi completata', 'complete')
@@ -187,14 +261,20 @@ function extractJson(text: string): string {
   console.log('[extractJson] First 500 chars:', text.substring(0, 500))
   console.log('[extractJson] Last 500 chars:', text.substring(Math.max(0, text.length - 500)))
 
-  // Try to find JSON block in markdown code fence first
-  const codeBlockMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/)
+  // Try to find JSON block in markdown code fence first (greedy match for the full content)
+  const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
   if (codeBlockMatch) {
-    console.log('[extractJson] Found JSON in code block')
-    return codeBlockMatch[1]
+    const content = codeBlockMatch[1].trim()
+    // Find JSON object within the code block
+    const jsonStart = content.indexOf('{')
+    const jsonEnd = content.lastIndexOf('}')
+    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+      console.log('[extractJson] Found JSON in code block, length:', jsonEnd - jsonStart + 1)
+      return content.slice(jsonStart, jsonEnd + 1)
+    }
   }
 
-  // Find the outermost { } pair that contains "usecases" or "issues"
+  // Find the outermost { } pair that contains "issues"
   const start = text.indexOf('{')
   const end = text.lastIndexOf('}')
 
