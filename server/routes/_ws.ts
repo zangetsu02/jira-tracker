@@ -1,6 +1,7 @@
-import { eq } from 'drizzle-orm'
+import { eq, and, isNull, isNotNull } from 'drizzle-orm'
 import { useDB } from '~~/server/utils/db'
-import { microservices, analysisResults, usecases } from '~~/server/database/schema'
+import { microservices, analysisResults, usecases, analysisPrompts } from '~~/server/database/schema'
+import type { ExistingJiraIssue } from '~~/server/utils/claude'
 import { analyzeMicroservice, extractUseCasesFromPdf } from '~~/server/utils/claude'
 import {
   findLegacyPath,
@@ -47,7 +48,7 @@ export default defineWebSocketHandler({
     if (data.type === 'start-extraction') {
       await handleExtraction(peer, microserviceName)
     } else if (data.type === 'start-analysis') {
-      await handleAnalysis(peer, microserviceName)
+      await handleAnalysis(peer, microserviceName, data.promptId)
     }
   },
 
@@ -64,7 +65,7 @@ export default defineWebSocketHandler({
 // HELPER FUNCTIONS
 // ============================================================================
 
-function parseMessage(message: unknown): { type: string, microserviceName?: string } | null {
+function parseMessage(message: unknown): { type: string, microserviceName?: string, promptId?: number } | null {
   try {
     const msgText = typeof message === 'string' ? message : (message as { text: () => string }).text()
     return JSON.parse(msgText)
@@ -146,9 +147,23 @@ async function handleExtraction(
 
 async function handleAnalysis(
   peer: { send: (msg: string) => void },
-  microserviceName: string
+  microserviceName: string,
+  promptId?: number
 ): Promise<void> {
   const db = await useDB()
+
+  // Fetch custom prompt if provided
+  let customPromptContent: string | null = null
+  if (promptId) {
+    const [prompt] = await db
+      .select()
+      .from(analysisPrompts)
+      .where(eq(analysisPrompts.id, promptId))
+      .limit(1)
+    if (prompt) {
+      customPromptContent = prompt.content
+    }
+  }
 
   const [ms] = await db
     .select()
@@ -160,6 +175,8 @@ async function handleAnalysis(
     peer.send(JSON.stringify({ type: 'error', message: 'Microservizio non trovato' }))
     return
   }
+
+  console.log('[handleAnalysis] Analyzing microservice:', microserviceName, 'path:', ms.path)
 
   const legacyPath = await findLegacyPath(ms.path)
   const pdfPath = ms.pdfPath || null
@@ -176,14 +193,44 @@ async function handleAnalysis(
     return
   }
 
+  // Fetch existing analysis results with Jira issues linked
+  const existingJiraResults = await db
+    .select({
+      jiraIssueKey: analysisResults.jiraIssueKey,
+      evidence: analysisResults.evidence,
+      notes: analysisResults.notes
+    })
+    .from(analysisResults)
+    .where(
+      and(
+        eq(analysisResults.microserviceId, ms.id),
+        isNotNull(analysisResults.jiraIssueKey)
+      )
+    )
+
+  // Map to ExistingJiraIssue format
+  const existingJiraIssues: ExistingJiraIssue[] = existingJiraResults.map(r => ({
+    jiraKey: r.jiraIssueKey!,
+    title: r.evidence || 'Issue senza titolo',
+    description: r.notes || undefined
+  }))
+
+  console.log('[handleAnalysis] Found', existingJiraIssues.length, 'existing Jira issues to exclude')
+
   try {
     sendStatus(peer, 'init', 'Inizializzazione analisi...', 5)
-    sendStatus(peer, 'cleanup', 'Pulizia dati precedenti...', 8)
+    sendStatus(peer, 'cleanup', 'Pulizia dati precedenti (mantenendo issue Jira)...', 8)
 
-    await db.delete(analysisResults).where(eq(analysisResults.microserviceId, ms.id))
+    // Delete only results WITHOUT a linked Jira issue
+    await db.delete(analysisResults).where(
+      and(
+        eq(analysisResults.microserviceId, ms.id),
+        isNull(analysisResults.jiraIssueKey)
+      )
+    )
 
     sendStatus(peer, 'loading_usecases', `Caricamento ${msUsecases.length} use case...`, 12)
-    sendStatus(peer, 'claude_start', 'Avvio analisi con Claude...', 15)
+    sendStatus(peer, 'claude_start', `Avvio analisi con Claude (${existingJiraIssues.length} issue Jira esistenti)...`, 15)
 
     let lastPhase = ''
     const result = await analyzeMicroservice(
@@ -200,7 +247,9 @@ async function handleAnalysis(
 
         peer.send(JSON.stringify({ type: 'chunk', text: chunk, phase, progress }))
       },
-      msUsecases
+      msUsecases,
+      customPromptContent,
+      existingJiraIssues
     )
 
     sendStatus(peer, 'saving', `Salvataggio ${result.issues.length} issue...`, 98)
@@ -253,8 +302,10 @@ async function saveAnalysisResults(
   // Collect all use case codes that have issues
   const usecaseCodesWithIssues = new Set<string>()
   for (const issue of result.issues) {
-    for (const code of issue.relatedUseCases) {
-      usecaseCodesWithIssues.add(code.toUpperCase())
+    if (issue.relatedUseCases && Array.isArray(issue.relatedUseCases)) {
+      for (const code of issue.relatedUseCases) {
+        usecaseCodesWithIssues.add(code.toUpperCase())
+      }
     }
   }
 

@@ -1,5 +1,5 @@
 import { spawn } from 'child_process'
-import { buildAnalysisPrompt } from '../prompts/analysis'
+import { buildAnalysisPrompt, buildPromptFromTemplate } from '../prompts/analysis'
 import {
   buildExtractUseCasesPrompt,
   type UseCaseExtractionResult,
@@ -56,7 +56,7 @@ interface ClaudeSystemMessage {
   message?: string
 }
 
-type ClaudeMessage = ClaudeResultMessage | ClaudeAssistantMessage | ClaudeErrorMessage | ClaudeSystemMessage | { type: string;[key: string]: unknown }
+type ClaudeMessage = ClaudeResultMessage | ClaudeAssistantMessage | ClaudeErrorMessage | ClaudeSystemMessage | { type: string, [key: string]: unknown }
 
 // ============================================================================
 // CLAUDE CLI EXECUTION
@@ -82,7 +82,7 @@ async function executeClaudeCli(
       '--verbose',
       '--permission-mode', 'bypassPermissions',
       '--model', 'sonnet',
-      '--max-turns', '20',
+      '--max-turns', '50',
       ...addDirArgs
     ]
 
@@ -108,17 +108,17 @@ async function executeClaudeCli(
     }, CLAUDE_TIMEOUT_MS)
 
     let lineBuffer = ''
-    
+
     proc.stdout.on('data', (data: Buffer) => {
       hasReceivedData = true
       // Accumulate data in buffer to handle split lines
       lineBuffer += data.toString()
-      
+
       // Process complete lines (ending with newline)
       const lines = lineBuffer.split('\n')
       // Keep the last incomplete line in buffer
       lineBuffer = lines.pop() || ''
-      
+
       for (const line of lines.filter(Boolean)) {
         const message = parseClaudeMessage(line)
         if (!message) {
@@ -147,14 +147,20 @@ async function executeClaudeCli(
             is_error: resultMsg.is_error,
             num_turns: resultMsg.num_turns
           }))
-          
+
+          // Check for error_max_turns - Claude didn't finish
+          if (resultMsg.subtype === 'error_max_turns') {
+            console.log('[Claude] ERROR: Max turns reached without completing analysis')
+            // Don't overwrite fullText - keep accumulated text for error message
+          }
+
           // Try to find the response in various possible fields
-          const responseText = resultMsg.result 
+          const responseText = resultMsg.result
             || (typeof resultMsg.message === 'string' ? resultMsg.message : null)
-            || resultMsg.text 
-            || resultMsg.content 
+            || resultMsg.text
+            || resultMsg.content
             || resultMsg.response
-          
+
           if (responseText) {
             // Only use result if it contains JSON or is longer than accumulated text
             if (responseText.includes('{') || responseText.length > fullText.length) {
@@ -183,7 +189,7 @@ async function executeClaudeCli(
         } else {
           // Log any other message types for debugging
           console.log('[Claude] Other message type:', message.type, JSON.stringify(message).substring(0, 500))
-          
+
           // Check if this message has any field that looks like JSON output
           const msgStr = JSON.stringify(message)
           if (msgStr.includes('"issues"') && msgStr.includes('[')) {
@@ -200,7 +206,7 @@ async function executeClaudeCli(
 
     proc.on('close', (code) => {
       clearTimeout(timeout)
-      
+
       // Process any remaining data in buffer
       if (lineBuffer.trim()) {
         const message = parseClaudeMessage(lineBuffer)
@@ -212,7 +218,7 @@ async function executeClaudeCli(
           }
         }
       }
-      
+
       console.log('[Claude] Process closed with code:', code, 'fullText length:', fullText.length)
       if (fullText.length > 0) {
         onProgress?.('Analisi completata', 'complete')
@@ -281,7 +287,11 @@ function extractJson(text: string): string {
   if (start === -1 || end === -1 || end < start) {
     console.error('[extractJson] No JSON found in response')
     console.error('[extractJson] Full text:', text)
-    throw new Error('Nessun JSON trovato nella risposta')
+    // Check if this looks like a max_turns error (text without JSON)
+    if (text.length > 0 && text.length < 500) {
+      throw new Error(`Claude non ha completato l'analisi. Risposta parziale: "${text.substring(0, 200)}..."`)
+    }
+    throw new Error('Nessun JSON trovato nella risposta. Claude potrebbe aver raggiunto il limite di iterazioni.')
   }
 
   const jsonStr = text.slice(start, end + 1)
@@ -316,12 +326,20 @@ function parseUseCasesJson(text: string): UseCaseExtractionResult {
 // PUBLIC API
 // ============================================================================
 
+export interface ExistingJiraIssue {
+  jiraKey: string
+  title: string
+  description?: string
+}
+
 export interface AnalyzeMicroserviceOptions {
   microservicePath: string
   legacyPath: string | null
   pdfPath: string | null
   usecases?: UseCase[]
   onProgress?: ProgressCallback
+  customPromptContent?: string | null
+  existingJiraIssues?: ExistingJiraIssue[]
 }
 
 /**
@@ -332,26 +350,47 @@ export async function analyzeMicroservice(
   legacyPath: string | null,
   pdfPath: string | null,
   onProgressOrOptions?: ProgressCallback | AnalyzeMicroserviceOptions,
-  usecases?: UseCase[]
+  usecases?: UseCase[],
+  customPromptContent?: string | null,
+  existingJiraIssues?: ExistingJiraIssue[]
 ): Promise<IssuesOnlyResult> {
   // Handle both old and new call signatures
   let onProgress: ProgressCallback | undefined
   let ucList: UseCase[] | undefined
+  let customPrompt: string | null | undefined
+  let existingIssues: ExistingJiraIssue[] | undefined
 
   if (typeof onProgressOrOptions === 'function') {
     onProgress = onProgressOrOptions
     ucList = usecases
+    customPrompt = customPromptContent
+    existingIssues = existingJiraIssues
   } else if (onProgressOrOptions) {
     onProgress = onProgressOrOptions.onProgress
     ucList = onProgressOrOptions.usecases
+    customPrompt = onProgressOrOptions.customPromptContent
+    existingIssues = onProgressOrOptions.existingJiraIssues
   }
 
-  const prompt = buildAnalysisPrompt({
-    microservicePath,
-    legacyPath,
-    pdfPath,
-    usecases: ucList
-  })
+  // Use custom prompt if provided, otherwise use default
+  let prompt: string
+  if (customPrompt) {
+    prompt = buildPromptFromTemplate(customPrompt, {
+      microservicePath,
+      legacyPath,
+      pdfPath,
+      usecases: ucList,
+      existingJiraIssues: existingIssues
+    })
+  } else {
+    prompt = buildAnalysisPrompt({
+      microservicePath,
+      legacyPath,
+      pdfPath,
+      usecases: ucList,
+      existingJiraIssues: existingIssues
+    })
+  }
 
   onProgress?.('Preparazione prompt...', 'preparing')
   onProgress?.(`Prompt length: ${prompt.length} chars`, 'info')
@@ -393,4 +432,60 @@ export async function extractUseCasesFromPdf(
   onProgress?.('Parsing use case...', 'parsing')
 
   return parseUseCasesJson(response)
+}
+
+/**
+ * Run a simple Claude prompt without file access
+ * Used for tasks like deduplication, classification, etc.
+ */
+export async function runClaudePrompt(prompt: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const args = [
+      '-p', prompt,
+      '--output-format', 'text',
+      '--model', 'haiku',
+      '--max-turns', '1'
+    ]
+
+    console.log('[runClaudePrompt] Running claude with simple prompt, length:', prompt.length)
+
+    const proc = spawn('claude', args, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, TERM: 'dumb' },
+      cwd: process.env.HOME || '/home/palladinic'
+    })
+
+    let stdout = ''
+    let stderr = ''
+
+    const timeout = setTimeout(() => {
+      proc.kill()
+      reject(new Error('Claude timeout'))
+    }, 120_000)
+
+    proc.stdout.on('data', (data: Buffer) => {
+      stdout += data.toString()
+    })
+
+    proc.stderr.on('data', (data: Buffer) => {
+      stderr += data.toString()
+    })
+
+    proc.on('close', (code) => {
+      clearTimeout(timeout)
+      
+      if (code === 0 && stdout.trim()) {
+        console.log('[runClaudePrompt] Success, response length:', stdout.length)
+        resolve(stdout.trim())
+      } else {
+        console.error('[runClaudePrompt] Failed, code:', code, 'stderr:', stderr)
+        reject(new Error(`Claude exited with code ${code}: ${stderr || 'No output'}`))
+      }
+    })
+
+    proc.on('error', (err) => {
+      clearTimeout(timeout)
+      reject(err)
+    })
+  })
 }

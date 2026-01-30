@@ -116,7 +116,7 @@ export function buildJiraDescription(issue: JiraIssue): string {
   lines.push(issue.description)
   lines.push('')
 
-  if (issue.relatedUseCases.length > 0) {
+  if (issue.relatedUseCases && issue.relatedUseCases.length > 0) {
     lines.push(`*Use Case correlati:* ${issue.relatedUseCases.join(', ')}`)
     lines.push('')
   }

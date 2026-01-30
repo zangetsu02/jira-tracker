@@ -59,8 +59,10 @@ export default defineEventHandler(async (event) => {
     // Collect use case codes with issues
     const usecaseCodesWithIssues = new Set<string>()
     for (const issue of result.issues) {
-      for (const code of issue.relatedUseCases) {
-        usecaseCodesWithIssues.add(code.toUpperCase())
+      if (issue.relatedUseCases && Array.isArray(issue.relatedUseCases)) {
+        for (const code of issue.relatedUseCases) {
+          usecaseCodesWithIssues.add(code.toUpperCase())
+        }
       }
     }
 

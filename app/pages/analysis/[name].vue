@@ -32,10 +32,34 @@ const expandedResultId = ref<number | null>(null)
 const deletingId = ref<number | null>(null)
 const showChatSlideover = ref(false)
 const chatResult = ref<(AnalysisResult & { usecase?: UseCase }) | null>(null)
+const deduplicating = ref(false)
 
 const openChat = (result: AnalysisResult & { usecase?: UseCase }) => {
   chatResult.value = result
   showChatSlideover.value = true
+}
+
+const handleDeduplicate = async () => {
+  if (!confirm('Vuoi identificare e rimuovere i duplicati? Le issue già collegate a Jira non verranno toccate.')) {
+    return
+  }
+
+  deduplicating.value = true
+  try {
+    const result = await $fetch(`/api/analysis/${name.value}/deduplicate`, {
+      method: 'POST'
+    })
+    if (result.deleted > 0) {
+      alert(`${result.message}`)
+      await refresh()
+    } else {
+      alert(result.message || 'Nessun duplicato trovato')
+    }
+  } catch (e: any) {
+    alert(`Errore: ${e.message || 'Errore sconosciuto'}`)
+  } finally {
+    deduplicating.value = false
+  }
 }
 
 const filterTabs = computed(() => [
@@ -223,6 +247,18 @@ const handleTabKeydown = (e: KeyboardEvent, currentIndex: number) => {
         </div>
 
         <div class="flex items-center gap-3">
+          <UButton
+            icon="i-lucide-copy-x"
+            color="warning"
+            variant="soft"
+            size="lg"
+            :loading="deduplicating"
+            :disabled="deduplicating || pending"
+            aria-label="Rimuovi duplicati"
+            @click="handleDeduplicate"
+          >
+            Rimuovi Duplicati
+          </UButton>
           <UButton
             icon="i-lucide-refresh-cw"
             color="neutral"
