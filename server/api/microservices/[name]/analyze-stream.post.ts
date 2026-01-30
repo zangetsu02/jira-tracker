@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm'
+import { eq, and, isNull, isNotNull } from 'drizzle-orm'
 import { useDB } from '~~/server/utils/db'
 import { microservices, analysisResults, usecases } from '~~/server/database/schema'
-import { analyzeMicroservice } from '~~/server/utils/claude'
+import { analyzeMicroservice, type ExistingJiraIssue } from '~~/server/utils/claude'
 import {
   findLegacyPath,
   buildJiraDescription,
@@ -37,6 +37,29 @@ export default defineEventHandler(async (event) => {
     .from(usecases)
     .where(eq(usecases.microserviceId, ms.id))
 
+  // Fetch existing Jira issues to exclude from analysis
+  const existingJiraResults = await db
+    .select({
+      jiraKey: analysisResults.jiraIssueKey,
+      title: analysisResults.jiraIssueSummary,
+      notes: analysisResults.notes
+    })
+    .from(analysisResults)
+    .where(
+      and(
+        eq(analysisResults.microserviceId, ms.id),
+        isNotNull(analysisResults.jiraIssueKey)
+      )
+    )
+
+  const existingJiraIssues: ExistingJiraIssue[] = existingJiraResults
+    .filter(r => r.jiraKey)
+    .map(r => ({
+      jiraKey: r.jiraKey!,
+      title: r.title || 'Issue senza titolo',
+      description: r.notes?.substring(0, 500) || undefined
+    }))
+
   if (!pdfPath && !legacyPath && msUsecases.length === 0) {
     throw createError({
       statusCode: 400,
@@ -56,15 +79,30 @@ export default defineEventHandler(async (event) => {
   try {
     sendEvent('status', { step: 'init', message: 'Inizializzazione analisi...' })
 
-    // Delete old data
-    sendEvent('status', { step: 'cleanup', message: 'Pulizia dati precedenti...' })
-    await db.delete(analysisResults).where(eq(analysisResults.microserviceId, ms.id))
+    // Delete old data, but preserve results with Jira issues
+    sendEvent('status', { step: 'cleanup', message: 'Pulizia dati precedenti (preservando issue Jira)...' })
+    await db.delete(analysisResults).where(
+      and(
+        eq(analysisResults.microserviceId, ms.id),
+        isNull(analysisResults.jiraIssueKey)
+      )
+    )
+
+    if (existingJiraIssues.length > 0) {
+      sendEvent('status', { step: 'jira_exclusions', message: `Esclusione di ${existingJiraIssues.length} issue già presenti in Jira...` })
+    }
 
     sendEvent('status', { step: 'claude_start', message: 'Avvio analisi con Claude...' })
 
-    // Run analysis with progress updates
-    const result = await analyzeMicroservice(ms.path, legacyPath, pdfPath, (message, phase) => {
-      sendEvent('chunk', { text: message, phase })
+    // Run analysis with progress updates, passing existing Jira issues to exclude
+    const result = await analyzeMicroservice({
+      microservicePath: ms.path,
+      legacyPath,
+      pdfPath,
+      onProgress: (message, phase) => {
+        sendEvent('chunk', { text: message, phase })
+      },
+      existingJiraIssues
     })
 
     sendEvent('status', { step: 'saving', message: `Salvataggio ${result.issues.length} issue...` })
@@ -72,8 +110,10 @@ export default defineEventHandler(async (event) => {
     // Collect use case codes with issues
     const usecaseCodesWithIssues = new Set<string>()
     for (const issue of result.issues) {
-      for (const code of issue.relatedUseCases) {
-        usecaseCodesWithIssues.add(code.toUpperCase())
+      if (issue.relatedUseCases && Array.isArray(issue.relatedUseCases)) {
+        for (const code of issue.relatedUseCases) {
+          usecaseCodesWithIssues.add(code.toUpperCase())
+        }
       }
     }
 

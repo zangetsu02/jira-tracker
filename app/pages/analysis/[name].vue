@@ -28,6 +28,9 @@ const { data, pending, error, refresh } = await useFetch<AnalysisData>(
 
 const selectedResult = ref<(AnalysisResult & { usecase?: UseCase }) | null>(null)
 const showJiraModal = ref(false)
+const showLinkJiraModal = ref(false)
+const linkJiraIssueKey = ref('')
+const linkingJiraId = ref<number | null>(null)
 const filterStatus = ref<string>('all')
 const expandedResultId = ref<number | null>(null)
 const deletingId = ref<number | null>(null)
@@ -35,10 +38,34 @@ const ignoringId = ref<number | null>(null)
 const restoringId = ref<number | null>(null)
 const showChatSlideover = ref(false)
 const chatResult = ref<(AnalysisResult & { usecase?: UseCase }) | null>(null)
+const deduplicating = ref(false)
 
 const openChat = (result: AnalysisResult & { usecase?: UseCase }) => {
   chatResult.value = result
   showChatSlideover.value = true
+}
+
+const handleDeduplicate = async () => {
+  if (!confirm('Vuoi identificare e rimuovere i duplicati? Le issue già collegate a Jira non verranno toccate.')) {
+    return
+  }
+
+  deduplicating.value = true
+  try {
+    const result = await $fetch(`/api/analysis/${name.value}/deduplicate`, {
+      method: 'POST'
+    })
+    if (result.deleted > 0) {
+      alert(`${result.message}`)
+      await refresh()
+    } else {
+      alert(result.message || 'Nessun duplicato trovato')
+    }
+  } catch (e: any) {
+    alert(`Errore: ${e.message || 'Errore sconosciuto'}`)
+  } finally {
+    deduplicating.value = false
+  }
 }
 
 const filterTabs = computed(() => {
@@ -82,6 +109,31 @@ const openJiraModal = (result: AnalysisResult & { usecase?: UseCase }) => {
 const handleIssueCreated = async (issueKey: string) => {
   await refresh()
   alert(`Issue creata: ${issueKey}`)
+}
+
+const openLinkJiraModal = (result: AnalysisResult & { usecase?: UseCase }) => {
+  selectedResult.value = result
+  linkJiraIssueKey.value = ''
+  showLinkJiraModal.value = true
+}
+
+const handleLinkJiraIssue = async () => {
+  if (!selectedResult.value || !linkJiraIssueKey.value.trim()) return
+
+  linkingJiraId.value = selectedResult.value.id
+  try {
+    await $fetch(`/api/analysis-result/${selectedResult.value.id}`, {
+      method: 'PATCH',
+      body: { jiraIssueKey: linkJiraIssueKey.value.trim().toUpperCase() }
+    })
+    await refresh()
+    showLinkJiraModal.value = false
+    linkJiraIssueKey.value = ''
+  } catch (e: any) {
+    alert(`Errore durante il collegamento: ${e.message || 'Errore sconosciuto'}`)
+  } finally {
+    linkingJiraId.value = null
+  }
 }
 
 const handleDeleteResult = async (result: AnalysisResult & { usecase?: UseCase }) => {
@@ -257,6 +309,18 @@ const activeTabId = computed(() => showIgnored.value ? 'ignored' : filterStatus.
         </div>
 
         <div class="flex items-center gap-3">
+          <UButton
+            icon="i-lucide-copy-x"
+            color="warning"
+            variant="soft"
+            size="lg"
+            :loading="deduplicating"
+            :disabled="deduplicating || pending"
+            aria-label="Rimuovi duplicati"
+            @click="handleDeduplicate"
+          >
+            Rimuovi Duplicati
+          </UButton>
           <UButton
             icon="i-lucide-refresh-cw"
             color="neutral"
@@ -778,9 +842,11 @@ const activeTabId = computed(() => showIgnored.value ? 'ignored' : filterStatus.
                       </button>
                     </div>
                     <div class="flex items-center gap-2">
-                      <button
-                        type="button"
-                        class="h-10 px-5 bg-[var(--ui-primary)] text-white font-medium text-sm flex items-center gap-2 hover:opacity-90 transition-opacity"
+                      <UButton
+                        color="neutral"
+                        variant="solid"
+                        size="lg"
+                        class="font-medium"
                         @click.stop="openChat(result)"
                       >
                         <UIcon
@@ -788,6 +854,18 @@ const activeTabId = computed(() => showIgnored.value ? 'ignored' : filterStatus.
                           class="w-4 h-4"
                         />
                         Chiedi a Claude
+                      </UButton>
+                      <button
+                        v-if="!result.jiraIssueKey && result.status !== 'implemented'"
+                        type="button"
+                        class="h-10 px-5 bg-[var(--ui-bg)] text-[var(--ui-text)] border border-[var(--ui-border-accented)] font-medium text-sm flex items-center gap-2 hover:bg-[var(--ui-bg-accented)] transition-colors"
+                        @click.stop="openLinkJiraModal(result)"
+                      >
+                        <UIcon
+                          name="i-lucide-link"
+                          class="w-4 h-4"
+                        />
+                        Collega Issue
                       </button>
                       <button
                         v-if="!result.jiraIssueKey && result.status !== 'implemented' && !result.ignored"
@@ -825,5 +903,63 @@ const activeTabId = computed(() => showIgnored.value ? 'ignored' : filterStatus.
       :result="chatResult"
       :microservice-name="microserviceName"
     />
+
+    <!-- Link Jira Issue Modal -->
+    <UModal v-model:open="showLinkJiraModal">
+      <template #content>
+        <div class="p-6">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="w-10 h-10 bg-[var(--ui-info-soft)] flex items-center justify-center">
+              <UIcon
+                name="i-lucide-link"
+                class="w-5 h-5 text-[var(--ui-info)]"
+              />
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold">
+                Collega Issue Jira
+              </h3>
+              <p class="text-sm text-[var(--ui-text-muted)]">
+                Inserisci il codice di un'issue Jira esistente
+              </p>
+            </div>
+          </div>
+
+          <form
+            class="space-y-4"
+            @submit.prevent="handleLinkJiraIssue"
+          >
+            <UFormField label="Codice Issue">
+              <UInput
+                v-model="linkJiraIssueKey"
+                placeholder="es. PROJ-123"
+                size="lg"
+                autofocus
+                :disabled="linkingJiraId !== null"
+              />
+            </UFormField>
+
+            <div class="flex justify-end gap-3 pt-4">
+              <UButton
+                color="neutral"
+                variant="ghost"
+                :disabled="linkingJiraId !== null"
+                @click="showLinkJiraModal = false"
+              >
+                Annulla
+              </UButton>
+              <UButton
+                type="submit"
+                color="info"
+                :loading="linkingJiraId !== null"
+                :disabled="!linkJiraIssueKey.trim()"
+              >
+                Collega
+              </UButton>
+            </div>
+          </form>
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>

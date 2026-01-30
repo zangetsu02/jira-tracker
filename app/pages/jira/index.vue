@@ -84,10 +84,10 @@ const filteredIssues = computed(() => {
       })
       if (!matchesStatus) return false
     }
-    // Label filter (multi-select: issue must have ALL selected labels)
+    // Label filter (multi-select: issue must have AT LEAST ONE of the selected labels)
     if (labelFilter.value.length > 0) {
-      const hasAllLabels = labelFilter.value.every(l => issue.labels.includes(l))
-      if (!hasAllLabels) return false
+      const hasAnyLabel = labelFilter.value.some(l => issue.labels.includes(l))
+      if (!hasAnyLabel) return false
     }
     // Assignee filter (multi-select: issue assignee must match ANY selected assignee, or unassigned)
     if (assigneeFilter.value.length > 0) {
