@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { Microservice, UseCase, AnalysisResult, MicroservicePdf } from '~~/shared/utils/types'
+import type { Microservice, UseCase, AnalysisResult, AnalysisPrompt, MicroservicePdf } from '~~/shared/utils/types'
 
 const route = useRoute()
 const name = computed(() => route.params.name as string)
+const { getStatusColor: _getStatusColor, getStatusLabel: _getStatusLabel, getCoverageColor: _getCoverageColor } = useAnalysisStatus()
 
 interface MicroserviceDetail extends Microservice {
   pdfs: MicroservicePdf[]
@@ -36,6 +37,10 @@ const { data: jiraIssues, pending: jiraLoading, refresh: refreshJira } = await u
   { default: () => ({ total: 0, issues: [] }) }
 )
 
+const { data: prompts, refresh: _refreshPrompts } = await useFetch<AnalysisPrompt[]>('/api/prompts', {
+  default: () => []
+})
+
 const analyzing = ref(false)
 const extracting = ref(false)
 const analyzeError = ref<string | null>(null)
@@ -47,6 +52,27 @@ const extractionProgress = ref(0)
 const analysisPhase = ref('')
 const extractionPhase = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
+
+// Prompt selection drawer
+const promptDrawerOpen = ref(false)
+const selectedPromptId = ref<number | null>(null)
+
+const _selectedPrompt = computed(() => {
+  if (!selectedPromptId.value) return null
+  return prompts.value?.find(p => p.id === selectedPromptId.value) || null
+})
+
+const _defaultPrompt = computed(() => {
+  return prompts.value?.find(p => p.isDefault) || prompts.value?.[0] || null
+})
+
+// Initialize selected prompt with default
+watch(prompts, (list) => {
+  if (list && list.length > 0 && !selectedPromptId.value) {
+    const defaultP = list.find(p => p.isDefault)
+    selectedPromptId.value = defaultP?.id || list[0].id
+  }
+}, { immediate: true })
 
 const PHASE_LABELS: Record<string, string> = {
   thinking: 'Elaborazione...',
@@ -192,7 +218,12 @@ const startExtraction = () => {
   }
 }
 
+const openAnalysisDrawer = () => {
+  promptDrawerOpen.value = true
+}
+
 const startAnalysis = () => {
+  promptDrawerOpen.value = false
   analyzing.value = true
   analyzeError.value = null
   analysisOutput.value = ''
@@ -203,7 +234,11 @@ const startAnalysis = () => {
   const ws = new WebSocket(`${protocol}//${window.location.host}/_ws`)
 
   ws.onopen = () => {
-    ws.send(JSON.stringify({ type: 'start-analysis', microserviceName: name.value }))
+    ws.send(JSON.stringify({
+      type: 'start-analysis',
+      microserviceName: name.value,
+      promptId: selectedPromptId.value
+    }))
   }
 
   ws.onmessage = async (event) => {
@@ -319,7 +354,7 @@ const formatDate = (date: string | null) => {
             class="h-12 px-6 bg-[var(--ui-text)] text-[var(--ui-bg)] font-medium text-sm flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
             :disabled="!canAnalyze"
             :title="!hasUseCases ? 'Estrai prima gli use case' : ''"
-            @click="startAnalysis"
+            @click="openAnalysisDrawer"
           >
             <UIcon
               name="i-lucide-play"
@@ -1042,5 +1077,148 @@ const formatDate = (date: string | null) => {
         </div>
       </div>
     </div>
+
+    <!-- Prompt Selection Drawer -->
+    <USlideover
+      v-model:open="promptDrawerOpen"
+      side="right"
+      :ui="{ width: 'sm:max-w-xl' }"
+    >
+      <template #header>
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 bg-[var(--accent-soft)] flex items-center justify-center shrink-0">
+            <UIcon
+              name="i-lucide-file-text"
+              class="w-6 h-6 text-[var(--accent)]"
+            />
+          </div>
+          <div class="min-w-0 flex-1">
+            <h2 class="text-xl font-semibold tracking-tight">
+              Seleziona Prompt
+            </h2>
+            <p class="text-sm text-[var(--ui-text-muted)] truncate mt-0.5">
+              Scegli il prompt da usare per l'analisi
+            </p>
+          </div>
+        </div>
+      </template>
+
+      <template #body>
+        <div class="space-y-4 -mx-4 -my-4 p-4">
+          <!-- Empty state -->
+          <div
+            v-if="!prompts?.length"
+            class="text-center py-12"
+          >
+            <div class="w-16 h-16 mx-auto bg-[var(--ui-bg-muted)] flex items-center justify-center mb-4">
+              <UIcon
+                name="i-lucide-file-plus"
+                class="w-8 h-8 text-[var(--ui-text-muted)]"
+              />
+            </div>
+            <p class="text-[var(--ui-text-muted)] mb-4">
+              Nessun prompt configurato
+            </p>
+            <NuxtLink
+              to="/prompts"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-[var(--ui-text)] text-[var(--ui-bg)] text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              <UIcon
+                name="i-lucide-plus"
+                class="w-4 h-4"
+              />
+              Crea Prompt
+            </NuxtLink>
+          </div>
+
+          <!-- Prompt list -->
+          <div
+            v-else
+            class="space-y-3"
+          >
+            <button
+              v-for="prompt in prompts"
+              :key="prompt.id"
+              type="button"
+              class="w-full text-left p-4 border transition-all duration-200"
+              :class="selectedPromptId === prompt.id
+                ? 'border-[var(--accent)] bg-[var(--accent-soft)]'
+                : 'border-[var(--ui-border)] bg-[var(--ui-bg-muted)] hover:border-[var(--ui-text-muted)]'"
+              @click="selectedPromptId = prompt.id"
+            >
+              <div class="flex items-start gap-3">
+                <div
+                  class="w-5 h-5 mt-0.5 border-2 flex items-center justify-center shrink-0 transition-colors"
+                  :class="selectedPromptId === prompt.id
+                    ? 'border-[var(--accent)] bg-[var(--accent)]'
+                    : 'border-[var(--ui-border)]'"
+                >
+                  <UIcon
+                    v-if="selectedPromptId === prompt.id"
+                    name="i-lucide-check"
+                    class="w-3 h-3 text-white"
+                  />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <p class="font-medium text-sm">
+                      {{ prompt.name }}
+                    </p>
+                    <span
+                      v-if="prompt.isDefault"
+                      class="tag tag--info text-xs"
+                    >
+                      Default
+                    </span>
+                  </div>
+                  <p
+                    v-if="prompt.description"
+                    class="text-xs text-[var(--ui-text-muted)] mt-1 line-clamp-2"
+                  >
+                    {{ prompt.description }}
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            <!-- Link to manage prompts -->
+            <NuxtLink
+              to="/prompts"
+              class="flex items-center gap-2 p-3 text-sm text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] transition-colors"
+            >
+              <UIcon
+                name="i-lucide-settings"
+                class="w-4 h-4"
+              />
+              Gestisci Prompt
+            </NuxtLink>
+          </div>
+        </div>
+      </template>
+
+      <template #footer>
+        <div class="flex items-center justify-between gap-4">
+          <button
+            type="button"
+            class="h-11 px-6 bg-[var(--ui-bg-muted)] text-[var(--ui-text)] border border-[var(--ui-border)] font-medium text-sm hover:bg-[var(--ui-bg-accent)] transition-colors"
+            @click="promptDrawerOpen = false"
+          >
+            Annulla
+          </button>
+          <button
+            type="button"
+            class="h-11 px-6 bg-[var(--ui-text)] text-[var(--ui-bg)] font-medium text-sm flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+            :disabled="!selectedPromptId && prompts?.length > 0"
+            @click="startAnalysis"
+          >
+            <UIcon
+              name="i-lucide-play"
+              class="w-4 h-4"
+            />
+            Avvia Analisi
+          </button>
+        </div>
+      </template>
+    </USlideover>
   </div>
 </template>
