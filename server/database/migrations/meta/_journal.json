@@ -60,7 +60,7 @@
     },
     {
       "idx": 8,
-      "version": "8",
+      "version": "7",
       "when": 1769676819285,
       "tag": "0008_handy_genesis",
       "breakpoints": true

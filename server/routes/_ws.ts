@@ -1,8 +1,12 @@
 import { eq, and, isNull, isNotNull } from 'drizzle-orm'
 import { useDB } from '~~/server/utils/db'
-import { microservices, analysisResults, usecases, analysisPrompts,  microservicePdfs} from '~~/server/database/schema'
-import type { ExistingJiraIssue } from '~~/server/utils/claude'
-import { analyzeMicroservice, extractUseCasesFromPdfs } from '~~/server/utils/claude'
+import { microservices, analysisResults, usecases, analysisPrompts, microservicePdfs } from '~~/server/database/schema'
+import {
+  analyzeMicroservice,
+  extractUseCasesFromPdfs,
+  type ExistingJiraIssue,
+  type UseCaseExtractionResult
+} from '~~/server/utils/claude'
 import {
   findLegacyPath,
   buildJiraDescription,
@@ -10,7 +14,6 @@ import {
   severityToConfidence,
   type IssuesOnlyResult
 } from '~~/server/utils/analysis'
-import type { UseCaseExtractionResult } from '~~/server/utils/claude'
 
 // ============================================================================
 // CONSTANTS
