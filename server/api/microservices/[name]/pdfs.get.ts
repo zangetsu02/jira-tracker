@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { useDB } from '~~/server/utils/db'
-import { microservices, usecases, analysisResults, microservicePdfs } from '~~/server/database/schema'
+import { microservices, microservicePdfs } from '~~/server/database/schema'
 
 export default defineEventHandler(async (event) => {
   const name = getRouterParam(event, 'name')
@@ -27,29 +27,11 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const msUsecases = await db
-    .select()
-    .from(usecases)
-    .where(eq(usecases.microserviceId, ms[0].id))
-
-  const msAnalyses = await db
-    .select()
-    .from(analysisResults)
-    .where(eq(analysisResults.microserviceId, ms[0].id))
-
-  const msPdfs = await db
+  const pdfs = await db
     .select()
     .from(microservicePdfs)
     .where(eq(microservicePdfs.microserviceId, ms[0].id))
     .orderBy(microservicePdfs.createdAt)
 
-  return {
-    ...ms[0],
-    pdfs: msPdfs,
-    usecases: msUsecases,
-    analyses: msAnalyses.map(analysis => ({
-      ...analysis,
-      usecase: msUsecases.find(uc => uc.id === analysis.usecaseId)
-    }))
-  }
+  return pdfs
 })

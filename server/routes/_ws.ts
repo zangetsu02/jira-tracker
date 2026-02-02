@@ -1,8 +1,12 @@
 import { eq, and, isNull, isNotNull } from 'drizzle-orm'
 import { useDB } from '~~/server/utils/db'
-import { microservices, analysisResults, usecases, analysisPrompts } from '~~/server/database/schema'
-import type { ExistingJiraIssue } from '~~/server/utils/claude'
-import { analyzeMicroservice, extractUseCasesFromPdf } from '~~/server/utils/claude'
+import { microservices, analysisResults, usecases, analysisPrompts, microservicePdfs } from '~~/server/database/schema'
+import {
+  analyzeMicroservice,
+  extractUseCasesFromPdfs,
+  type ExistingJiraIssue,
+  type UseCaseExtractionResult
+} from '~~/server/utils/claude'
 import {
   findLegacyPath,
   buildJiraDescription,
@@ -10,7 +14,6 @@ import {
   severityToConfidence,
   type IssuesOnlyResult
 } from '~~/server/utils/analysis'
-import type { UseCaseExtractionResult } from '~~/server/utils/claude'
 
 // ============================================================================
 // CONSTANTS
@@ -99,7 +102,20 @@ async function handleExtraction(
     return
   }
 
-  if (!ms.pdfPath) {
+  // Get all PDFs from new table
+  const pdfs = await db
+    .select()
+    .from(microservicePdfs)
+    .where(eq(microservicePdfs.microserviceId, ms.id))
+    .orderBy(microservicePdfs.createdAt)
+
+  // Collect all PDF paths (new table + legacy field for backward compatibility)
+  const pdfPaths: string[] = pdfs.map(p => p.path)
+  if (pdfPaths.length === 0 && ms.pdfPath) {
+    pdfPaths.push(ms.pdfPath)
+  }
+
+  if (pdfPaths.length === 0) {
     peer.send(JSON.stringify({ type: 'error', message: 'Nessun PDF caricato' }))
     return
   }
@@ -110,10 +126,10 @@ async function handleExtraction(
 
     await db.delete(usecases).where(eq(usecases.microserviceId, ms.id))
 
-    sendStatus(peer, 'claude_start', 'Avvio estrazione con Claude...', 15)
+    sendStatus(peer, 'claude_start', `Avvio estrazione con Claude da ${pdfPaths.length} PDF...`, 15)
 
     let lastPhase = ''
-    const result = await extractUseCasesFromPdf(ms.pdfPath, (chunk, phase) => {
+    const result = await extractUseCasesFromPdfs(pdfPaths, (chunk, phase) => {
       const progress = PHASE_PROGRESS[phase] ?? 50
 
       if (phase !== lastPhase) {

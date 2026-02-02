@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { listMicroservices } from '~~/server/utils/scanner'
 import { useDB } from '~~/server/utils/db'
-import { microservices, analysisResults } from '~~/server/database/schema'
+import { microservices, analysisResults, microservicePdfs } from '~~/server/database/schema'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
@@ -46,11 +46,20 @@ export default defineEventHandler(async (event) => {
               .where(eq(analysisResults.microserviceId, dbRecord.id))
           : []
 
+        // Count PDFs from new table
+        const pdfs = dbRecord
+          ? await db
+              .select()
+              .from(microservicePdfs)
+              .where(eq(microservicePdfs.microserviceId, dbRecord.id))
+          : []
+
         const implementedCount = analyses.filter(a => a.status === 'implemented').length
         const totalCount = analyses.length
 
         return {
           ...dbRecord,
+          pdfCount: pdfs.length,
           hasAnalysis: totalCount > 0,
           lastAnalysisStatus: totalCount === 0
             ? undefined

@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { useDB } from '~~/server/utils/db'
-import { microservices } from '~~/server/database/schema'
+import { microservices, microservicePdfs } from '~~/server/database/schema'
 
 export default defineEventHandler(async (event) => {
   const name = getRouterParam(event, 'name')
@@ -50,22 +50,26 @@ export default defineEventHandler(async (event) => {
   const uploadsDir = join(process.cwd(), 'uploads', 'pdfs')
   await mkdir(uploadsDir, { recursive: true })
 
-  const filename = `${name}-${Date.now()}.pdf`
-  const filepath = join(uploadsDir, filename)
+  const storedFilename = `${name}-${Date.now()}.pdf`
+  const filepath = join(uploadsDir, storedFilename)
 
   await writeFile(filepath, file.data)
 
-  await db
-    .update(microservices)
-    .set({
-      pdfFilename: file.filename || filename,
-      pdfPath: filepath
+  const originalFilename = file.filename || storedFilename
+
+  const [inserted] = await db
+    .insert(microservicePdfs)
+    .values({
+      microserviceId: ms[0].id,
+      filename: originalFilename,
+      path: filepath
     })
-    .where(eq(microservices.id, ms[0].id))
+    .returning()
 
   return {
     success: true,
-    filename: file.filename || filename,
+    id: inserted.id,
+    filename: originalFilename,
     path: filepath
   }
 })

@@ -1,4 +1,6 @@
-# Jira Tracker - Microservice Analysis Tool
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Overview
 
@@ -13,88 +15,42 @@ Tool per analizzare microservizi e tracciare la copertura degli use case rispett
 - **AI**: Claude CLI (Anthropic SDK)
 - **Package Manager**: pnpm
 
-## Project Structure
+## Commands
 
+```bash
+# Development
+pnpm dev                # Start dev server at localhost:3000
+pnpm lint               # Run ESLint
+
+# Database
+docker compose up       # Start PostgreSQL container
+pnpm db:generate        # Generate Drizzle migrations
+pnpm db:migrate         # Apply migrations to database
+
+# Better Auth schema (run after modifying auth config)
+pnpm auth:schema        # Regenerate auth schema from server/utils/auth.ts
+
+# Build
+pnpm build
+pnpm preview
 ```
-├── app/                      # Frontend Nuxt
-│   ├── pages/
-│   │   ├── index.vue         # Dashboard con stats microservizi
-│   │   ├── settings.vue      # Config directory e Jira
-│   │   ├── sign-in.vue       # Login
-│   │   ├── sign-up.vue       # Registrazione
-│   │   ├── microservice/[name].vue  # Dettaglio microservizio
-│   │   └── analysis/[name].vue      # Risultati analisi
-│   ├── composables/
-│   │   ├── useAuth.ts        # Gestione autenticazione
-│   │   └── useAnalysisStatus.ts
-│   ├── layouts/
-│   │   ├── default.vue       # Layout principale
-│   │   └── login.vue         # Layout login
-│   └── middleware/
-│       └── auth.global.ts    # Protezione route
-│
-├── server/                   # Backend Nitro
-│   ├── api/
-│   │   ├── microservices/    # CRUD microservizi
-│   │   │   ├── index.get.ts  # Lista microservizi
-│   │   │   ├── [name].get.ts # Dettaglio singolo
-│   │   │   └── [name]/
-│   │   │       ├── analyze.post.ts        # Avvia analisi
-│   │   │       ├── analyze-stream.post.ts # Analisi con streaming
-│   │   │       ├── pdf.get.ts             # Scarica PDF
-│   │   │       └── pdf.post.ts            # Upload PDF
-│   │   ├── analysis/         # Risultati analisi
-│   │   │   ├── [msName].get.ts
-│   │   │   ├── history.get.ts
-│   │   │   └── [id]/jira.patch.ts
-│   │   ├── jira/             # Integrazione Jira
-│   │   │   ├── config.get.ts
-│   │   │   ├── config.post.ts
-│   │   │   ├── issue.post.ts
-│   │   │   ├── issue-types.get.ts
-│   │   │   ├── issues/[label].get.ts
-│   │   │   ├── test.post.ts
-│   │   │   └── users.get.ts
-│   │   ├── settings/         # Impostazioni app
-│   │   │   ├── index.get.ts
-│   │   │   └── index.post.ts
-│   │   ├── usecases/[msName].get.ts
-│   │   └── auth/[...all].ts  # Better Auth handler
-│   │
-│   ├── database/
-│   │   ├── schema/           # Drizzle schema
-│   │   │   ├── auth.ts       # User, session, account, verification
-│   │   │   ├── microservices.ts
-│   │   │   ├── usecases.ts
-│   │   │   ├── analysis.ts
-│   │   │   ├── jira.ts
-│   │   │   └── settings.ts
-│   │   ├── migrations/       # SQL migrations
-│   │   └── drizzle.config.ts
-│   │
-│   ├── utils/
-│   │   ├── scanner.ts        # Scan directory microservizi
-│   │   ├── claude.ts         # Esecuzione Claude CLI
-│   │   ├── analysis.ts       # Logica analisi e parsing
-│   │   ├── jira.ts           # Client Jira REST API
-│   │   ├── db.ts             # Connessione database
-│   │   ├── auth.ts           # Config Better Auth
-│   │   └── runtimeConfig.ts  # Env variables
-│   │
-│   ├── prompts/
-│   │   └── analysis.ts       # Template prompt per Claude
-│   │
-│   └── routes/
-│       └── _ws.ts            # WebSocket per streaming
-│
-├── shared/
-│   └── utils/
-│       └── types.ts          # Types condivisi
-│
-├── docker-compose.yml        # PostgreSQL container
-├── .env                      # Configurazione
-└── .env.example
-```
+
+## Architecture
+
+### Frontend (app/)
+- **pages/**: Nuxt pages with file-based routing
+- **composables/**: Vue composables (`useAuth.ts`, `useAnalysisStatus.ts`)
+- **middleware/auth.global.ts**: Route protection
+
+### Backend (server/)
+- **api/**: Nitro API endpoints following `[resource]/[action].[method].ts` convention
+- **database/schema/**: Drizzle ORM table definitions
+- **utils/**: Core utilities (scanner, claude CLI integration, jira client, db connection)
+- **prompts/analysis.ts**: Claude prompt templates for microservice analysis
+- **routes/_ws.ts**: WebSocket handler for streaming analysis results
+
+### Shared
+- **shared/utils/types.ts**: TypeScript types shared between frontend and backend
 
 ## Database Schema
 
@@ -145,42 +101,20 @@ Il pattern default `sil-ms-*` cerca directory che iniziano con "sil-ms-".
 
 ## Environment Variables
 
-```bash
-# Database
-NUXT_DATABASE_URL=postgres://user:password@localhost:5432/jira_checker
+Required in `.env` (see `.env.example`):
+- `NUXT_DATABASE_URL`: PostgreSQL connection string
+- `NUXT_BETTER_AUTH_SECRET`: Auth secret key
+- `NUXT_APP_URL`: App URL (default: http://localhost:3000)
 
-# Auth
-NUXT_BETTER_AUTH_SECRET=your-secret-key
+Optional:
+- `NUXT_RESEND_API_KEY`: For email verification
+- `NUXT_MICROSERVICES_DIR`: Default microservices directory (configurable via UI)
 
-# App
-NUXT_APP_URL=http://localhost:3000
-NUXT_APP_NAME=Jira Tracker
-NODE_ENV=development
+## Code Style
 
-# Email (opzionale)
-NUXT_RESEND_API_KEY=re_xxx
-
-# Microservizi (opzionale, configurabile da UI)
-NUXT_MICROSERVICES_DIR=/path/to/microservices
-```
-
-## Commands
-
-```bash
-# Development
-pnpm dev
-
-# Database
-pnpm db:generate    # Genera migrations
-pnpm db:migrate     # Applica migrations
-
-# Auth schema
-pnpm auth:schema    # Genera schema Better Auth
-
-# Build
-pnpm build
-pnpm preview
-```
+ESLint with Nuxt config. Key rules:
+- No trailing commas (`commaDangle: 'never'`)
+- 1TBS brace style
 
 ## Issue Types
 
@@ -201,9 +135,10 @@ L'analisi Claude genera issue con questi tipi:
 - `missing`: Non implementato
 - `unclear`: Non determinabile
 
-## Notes
+## Important Notes
 
-- Il pattern microservizi default e` `sil-ms-*`
-- Il codice legacy viene cercato in: `docs/aspx`, `docs/legacy`, `legacy`, `aspx`
-- Claude CLI deve essere installato e configurato nel sistema
-- Le credenziali Jira sono salvate per utente nel database
+- Default microservices pattern: `sil-ms-*` (directories starting with "sil-ms-")
+- Legacy code search paths: `docs/aspx`, `docs/legacy`, `legacy`, `aspx`
+- Claude CLI must be installed and configured on the system
+- Jira credentials are stored per-user in the database
+- WebSocket is enabled in Nitro for streaming analysis results

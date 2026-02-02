@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import type { Microservice, UseCase, AnalysisResult, AnalysisPrompt } from '~~/shared/utils/types'
+import type { Microservice, UseCase, AnalysisResult, AnalysisPrompt, MicroservicePdf } from '~~/shared/utils/types'
 
 const route = useRoute()
 const name = computed(() => route.params.name as string)
 const { getStatusColor: _getStatusColor, getStatusLabel: _getStatusLabel, getCoverageColor: _getCoverageColor } = useAnalysisStatus()
 
 interface MicroserviceDetail extends Microservice {
+  pdfs: MicroservicePdf[]
   usecases: UseCase[]
   analyses: (AnalysisResult & { usecase?: UseCase })[]
 }
@@ -92,8 +93,10 @@ const EXTRACTION_PHASE_LABELS: Record<string, string> = {
 }
 
 const hasUseCases = computed(() => (microservice.value?.usecases?.length ?? 0) > 0)
-const canExtract = computed(() => !!microservice.value?.pdfFilename && !extracting.value && !analyzing.value)
+const hasPdfs = computed(() => (microservice.value?.pdfs?.length ?? 0) > 0 || !!microservice.value?.pdfFilename)
+const canExtract = computed(() => hasPdfs.value && !extracting.value && !analyzing.value)
 const canAnalyze = computed(() => hasUseCases.value && !analyzing.value && !extracting.value)
+const deletingPdfId = ref<number | null>(null)
 
 const stats = computed(() => {
   const analyses = microservice.value?.analyses ?? []
@@ -136,6 +139,30 @@ const uploadPdf = async (event: Event) => {
     uploadProgress.value = false
     if (fileInput.value) fileInput.value.value = ''
   }
+}
+
+const deletePdf = async (pdfId: number) => {
+  deletingPdfId.value = pdfId
+  analyzeError.value = null
+
+  try {
+    await $fetch(`/api/microservices/${name.value}/pdf/${pdfId}`, { method: 'DELETE' })
+    await refresh()
+  } catch (e) {
+    analyzeError.value = e instanceof Error ? e.message : 'Errore durante eliminazione'
+  } finally {
+    deletingPdfId.value = null
+  }
+}
+
+const formatPdfDate = (date: string | Date | null) => {
+  if (!date) return ''
+  return new Date(date).toLocaleDateString('it-IT', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 const startExtraction = () => {
@@ -463,52 +490,85 @@ const formatDate = (date: string | null) => {
           <div class="report-card__header">
             <div
               class="report-card__icon-wrapper"
-              :class="microservice.pdfFilename ? 'report-card__icon-wrapper--success' : 'report-card__icon-wrapper--muted'"
+              :class="hasPdfs ? 'report-card__icon-wrapper--success' : 'report-card__icon-wrapper--muted'"
             >
               <UIcon
-                :name="microservice.pdfFilename ? 'i-lucide-file-check' : 'i-lucide-file-x'"
+                :name="hasPdfs ? 'i-lucide-files' : 'i-lucide-file-x'"
                 class="w-5 h-5"
               />
               <div class="report-card__icon-ring" />
             </div>
-            <span class="report-card__label">Documento PDF</span>
+            <span class="report-card__label">Documenti PDF</span>
           </div>
 
           <div class="mt-5">
+            <!-- PDF List from new table -->
             <div
-              v-if="microservice.pdfFilename"
+              v-if="microservice.pdfs?.length"
+              class="space-y-2 max-h-32 overflow-y-auto"
+            >
+              <div
+                v-for="pdf in microservice.pdfs"
+                :key="pdf.id"
+                class="flex items-center gap-2 p-2 bg-[var(--ui-bg-muted)] rounded text-sm group/pdf"
+              >
+                <UIcon
+                  name="i-lucide-file-text"
+                  class="w-4 h-4 text-[var(--ui-text-muted)] shrink-0"
+                />
+                <span class="flex-1 truncate">{{ pdf.filename }}</span>
+                <span class="text-xs text-[var(--ui-text-dimmed)] shrink-0">{{ formatPdfDate(pdf.createdAt) }}</span>
+                <button
+                  class="opacity-0 group-hover/pdf:opacity-100 p-1 hover:bg-[var(--ui-error-soft)] rounded transition-all"
+                  :disabled="deletingPdfId === pdf.id"
+                  @click.stop="deletePdf(pdf.id)"
+                >
+                  <UIcon
+                    :name="deletingPdfId === pdf.id ? 'i-lucide-loader-2' : 'i-lucide-trash-2'"
+                    class="w-3.5 h-3.5 text-[var(--ui-error)]"
+                    :class="deletingPdfId === pdf.id ? 'animate-spin' : ''"
+                  />
+                </button>
+              </div>
+            </div>
+            <!-- Legacy single PDF display (backward compatibility) -->
+            <div
+              v-else-if="microservice.pdfFilename"
               class="report-card__file-info"
             >
               <p class="font-medium text-sm truncate">
                 {{ microservice.pdfFilename }}
               </p>
-              <span class="report-card__badge report-card__badge--success mt-2">Caricato</span>
+              <span class="report-card__badge report-card__badge--success mt-2">Caricato (legacy)</span>
             </div>
+            <!-- No PDFs -->
             <div
               v-else
               class="report-card__file-info"
             >
               <p class="text-[var(--ui-text-muted)] text-sm">
-                Non caricato
+                Nessun PDF caricato
               </p>
               <p class="text-xs text-[var(--ui-text-dimmed)] mt-1">
-                Carica un PDF per avviare l'analisi
+                Carica uno o più PDF per avviare l'analisi
               </p>
             </div>
           </div>
 
-          <button
-            class="report-card__action-btn mt-4"
-            :disabled="uploadProgress"
-            @click="triggerUpload"
-          >
-            <UIcon
-              :name="uploadProgress ? 'i-lucide-loader-2' : 'i-lucide-upload'"
-              class="w-4 h-4"
-              :class="uploadProgress ? 'animate-spin' : ''"
-            />
-            {{ microservice.pdfFilename ? 'Sostituisci' : 'Carica PDF' }}
-          </button>
+          <div class="flex items-center gap-2 mt-4">
+            <button
+              class="report-card__action-btn flex-1"
+              :disabled="uploadProgress"
+              @click="triggerUpload"
+            >
+              <UIcon
+                :name="uploadProgress ? 'i-lucide-loader-2' : 'i-lucide-plus'"
+                class="w-4 h-4"
+                :class="uploadProgress ? 'animate-spin' : ''"
+              />
+              Aggiungi PDF
+            </button>
+          </div>
           <input
             ref="fileInput"
             type="file"

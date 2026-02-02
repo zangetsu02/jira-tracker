@@ -438,13 +438,13 @@ const toggleExclusion = async (ms: MicroserviceWithStatus, event: Event) => {
             <div class="col-span-2 flex justify-center">
               <span
                 class="tag"
-                :class="ms.pdfFilename ? 'tag--success' : ''"
+                :class="ms.pdfCount > 0 ? 'tag--success' : ''"
               >
                 <UIcon
-                  :name="ms.pdfFilename ? 'i-lucide-file-check' : 'i-lucide-file-x'"
+                  :name="ms.pdfCount > 0 ? 'i-lucide-file-check' : 'i-lucide-file-x'"
                   class="w-3.5 h-3.5"
                 />
-                {{ ms.pdfFilename ? 'PDF' : 'Mancante' }}
+                {{ ms.pdfCount > 0 ? `${ms.pdfCount} PDF` : 'Mancante' }}
               </span>
             </div>
 
